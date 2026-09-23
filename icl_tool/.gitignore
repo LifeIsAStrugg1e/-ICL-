@@ -1,0 +1,6 @@
+﻿__pycache__/
+*.pyc
+*.obj
+extracted/
+*_bmp/
+_test*/
