@@ -5,3 +5,9 @@ _test*/
 _test_run/
 extracted/
 *_bmp/
+
+# Build artifacts
+build_temp/
+dist/
+*.exe
+!ICL_ICO_Tool.exe
