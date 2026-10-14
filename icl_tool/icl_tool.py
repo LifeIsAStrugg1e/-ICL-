@@ -16,7 +16,7 @@ class App:
         root.resizable(False, False)
 
         self.input_paths = []
-        self.mode = tk.StringVar(value="extract")   # extract | pack
+        self.mode = tk.StringVar(value="extract")   # extract | pack | img2ico
         self.output_format = tk.StringVar(value="raw")  # raw | jpg | bmp | png (extract) / ico (pack)
         self.output_path = tk.StringVar()
         self.quality = tk.IntVar(value=95)
@@ -33,8 +33,11 @@ class App:
         ttk.Radiobutton(frm_mode, text="解压提取（ICL / ICO → 图片）",
                         variable=self.mode, value="extract",
                         command=self._on_mode_change).pack(anchor="w", padx=8, pady=2)
-        ttk.Radiobutton(frm_mode, text="打包（ICL → ICO 设备格式）",
+        ttk.Radiobutton(frm_mode, text="打包（ICL / ICO → ICO 设备格式）",
                         variable=self.mode, value="pack",
+                        command=self._on_mode_change).pack(anchor="w", padx=8, pady=2)
+        ttk.Radiobutton(frm_mode, text="图片压缩（JPG/PNG/BMP → ICO）",
+                        variable=self.mode, value="img2ico",
                         command=self._on_mode_change).pack(anchor="w", padx=8, pady=2)
 
         # ===== input files =====
@@ -137,7 +140,11 @@ class App:
                 self.output_format.set("raw")
             self.lbl_out_desc.config(text="输出文件夹:")
             self.frm_quality.pack(fill="x", padx=8, pady=2)
-        else:
+        elif mode == "img2ico":
+            self.output_format.set("ico")
+            self.lbl_out_desc.config(text="输出 ICO 文件:")
+            self.frm_quality.pack_forget()
+        else:  # pack
             self.output_format.set("ico")
             self.lbl_out_desc.config(text="输出 ICO 文件:")
             self.frm_quality.pack_forget()
@@ -146,22 +153,35 @@ class App:
     # ---- file selection ----
 
     def add_files(self):
-        paths = filedialog.askopenfilenames(
-            title="选择 ICL / ICO 文件",
-            filetypes=[("图片容器", "*.icl *.ico"), ("ICL files", "*.icl"),
-                       ("ICO files", "*.ico"), ("All files", "*.*")])
+        mode = self.mode.get()
+        if mode == "img2ico":
+            paths = filedialog.askopenfilenames(
+                title="选择图片文件",
+                filetypes=[("图片文件", "*.jpg *.jpeg *.png *.bmp"),
+                           ("JPG", "*.jpg *.jpeg"), ("PNG", "*.png"),
+                           ("BMP", "*.bmp"), ("All files", "*.*")])
+        else:
+            paths = filedialog.askopenfilenames(
+                title="选择 ICL / ICO 文件",
+                filetypes=[("图片容器", "*.icl *.ico"), ("ICL files", "*.icl"),
+                           ("ICO files", "*.ico"), ("All files", "*.*")])
         for p in paths:
             if p not in self.input_paths:
                 self.input_paths.append(p)
                 self.lst_files.insert("end", os.path.basename(p))
 
     def add_folder(self):
-        folder = filedialog.askdirectory(title="选择包含 ICL/ICO 的文件夹")
+        mode = self.mode.get()
+        folder = filedialog.askdirectory(title="选择文件夹")
         if not folder:
             return
+        if mode == "img2ico":
+            exts = (".jpg", ".jpeg", ".png", ".bmp")
+        else:
+            exts = (".icl", ".ico")
         count = 0
         for name in sorted(os.listdir(folder)):
-            if name.lower().endswith((".icl", ".ico")):
+            if name.lower().endswith(exts):
                 p = os.path.join(folder, name)
                 if p not in self.input_paths:
                     self.input_paths.append(p)
@@ -223,7 +243,7 @@ class App:
             return
 
         mode = self.mode.get()
-        if mode == "pack" and not out.lower().endswith(".ico"):
+        if mode in ("pack", "img2ico") and not out.lower().endswith(".ico"):
             out += ".ico"
             self.output_path.set(out)
 
@@ -238,6 +258,8 @@ class App:
         try:
             if mode == "extract":
                 self._do_extract(out)
+            elif mode == "img2ico":
+                self._do_img2ico(out)
             else:
                 self._do_pack(out)
             self._status("完成")
@@ -343,6 +365,32 @@ class App:
                 self._log(f"  打包 {count} 张 -> {ico_path}")
 
             self._progress(100)
+
+    def _do_img2ico(self, out_path):
+        """图片文件直接打包为 JXAG ICO"""
+        total = len(self.input_paths)
+        images = []
+
+        for fi, path in enumerate(self.input_paths):
+            base = os.path.splitext(os.path.basename(path))[0]
+            self._status(f"读取 {fi+1}/{total}: {base}")
+            self._progress((fi + 1) / total * 50)
+
+            try:
+                with open(path, 'rb') as f:
+                    raw = f.read()
+                images.append({'index': fi, 'data': raw})
+            except Exception as e:
+                self._log(f"  错误 {base}: {e}")
+
+        if not images:
+            self._log("没有读取到图片")
+            return
+
+        self._status(f"打包 {len(images)} 张...")
+        count = pack_ico(images, out_path)
+        self._progress(100)
+        self._log(f"打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes)")
 
 
 def main():
