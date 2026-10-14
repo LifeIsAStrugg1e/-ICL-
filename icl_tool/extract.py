@@ -99,7 +99,7 @@ def _extract_jxag_image(data, addr, filesize, index):
 
     payload = data[addr + 16:addr + 16 + length]
 
-    # JPEG/PNG/BMP payload
+    # JPEG/PNG/BMP payload (lossy mode or original encoded)
     if (payload[:2] == b'\xff\xd8' or payload[:8] == b'\x89PNG\r\n\x1a\n'
             or payload[:2] == b'BM'):
         return {'index': index, 'width': w, 'height': h, 'data': payload,
