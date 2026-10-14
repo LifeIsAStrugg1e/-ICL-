@@ -11,7 +11,7 @@ pip install pillow numpy
 ## 使用
 
 ```python
-from ICL_toolkit import extract, pack_ico, icl_to_ico
+from ICL_toolkit import extract, pack_ico, icl_to_ico, images_to_ico
 
 # 解压 ICL/ICO -> BMP
 count, fmt = extract("file.icl", "output_dir", fmt="bmp")
@@ -21,6 +21,9 @@ pack_ico([{'index': 0, 'bmp': bmp_bytes}], "output.ico")
 
 # ICL -> ICO 一步转换
 icl_to_ico("input.icl", "output.ico")
+
+# 图片(JPG/PNG/BMP) -> ICO
+images_to_ico(["a.jpg", "b.png", "c.bmp"], "output.ico")
 ```
 
 ## API
@@ -30,6 +33,8 @@ icl_to_ico("input.icl", "output.ico")
 | `extract(path, out_dir, fmt)` | 解压 ICL/ICO，fmt: raw/jpg/bmp/png |
 | `pack_ico(images, out_path)` | 打包 JXAG ICO |
 | `icl_to_ico(icl_path, ico_path)` | ICL 转 ICO |
+| `images_to_ico(paths, out_path)` | 图片文件转 ICO |
+| `folder_to_ico(folder, out_path)` | 文件夹内图片转 ICO |
 | `detect(data)` | 检测格式: 'icl'/'ico'/None |
 | `parse_icl(data)` | 解析 ICL 文件 |
 | `extract_ico(data)` | 解压 ICO 数据 |
