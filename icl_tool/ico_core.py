@@ -108,11 +108,12 @@ def _lzo_compress(data):
     return dst.raw[:out_len]
 
 
-def pack_ico(images, out_path, lossy=False, quality=85):
+def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
     """Pack images into JXAG ICO file.
 
     lossy=False: LZO-compressed RGB565 (flag=1, lossless storage)
     lossy=True:  JPG-encoded (flag=0, quality controls compression ratio)
+    batch_size:  number of images to process in memory at once (default 20)
 
     Format matches C tool ico_recovery_picture JXAG path:
       - 16-byte header: "JXAG" + ... + count at 0x0C (LE)
@@ -122,53 +123,12 @@ def pack_ico(images, out_path, lossy=False, quality=85):
     if not images:
         raise ValueError("no images to pack")
 
-    count = len(images)
+    sorted_images = sorted(images, key=lambda x: x['index'])
+    count = len(sorted_images)
     header_size = 16 + count * 4  # 16-byte header + address table
     header_size = (header_size + 15) // 16 * 16
 
     addrs = [0] * count
-    data_blobs = []
-    offset = header_size
-
-    for i, img in enumerate(sorted(images, key=lambda x: x['index'])):
-        raw = img.get('jpg') or img.get('bmp') or img.get('data')
-        pil = _load_pil_image(raw)
-
-        if lossy:
-            # JPG encode (lossy)
-            w, h = pil.size
-            buf = io.BytesIO()
-            pil.convert('RGB').save(buf, 'JPEG', quality=quality)
-            payload = buf.getvalue()
-            compress_flag = 0
-        else:
-            # RGB565 + LZO (lossless storage)
-            w, h, rgb565 = _image_to_rgb565(pil)
-            payload = _lzo_compress(rgb565)
-            compress_flag = 1
-
-        # 16-byte info header:
-        #   0-3: "JXAG"
-        #   4: compress flag (0=JPG, 1=LZO RGB565)
-        #   5: 0x00
-        #   6: 0x00
-        #   7: 0x10
-        #   8-9: width LE
-        #   10-11: height LE
-        #   12-15: payload length LE
-        info = b'JXAG'
-        info += bytes([compress_flag, 0x00, 0x00, 0x10])
-        info += struct.pack('<HH', w, h)
-        info += struct.pack('<I', len(payload))
-        assert len(info) == 16
-
-        blob = info + payload
-        write_size = (len(blob) + 15) // 16 * 16
-        blob = blob.ljust(write_size, b'\x00')
-
-        addrs[i] = offset
-        data_blobs.append(blob)
-        offset += write_size
 
     with open(out_path, 'wb') as f:
         # 16-byte file header
@@ -179,17 +139,55 @@ def pack_ico(images, out_path, lossy=False, quality=85):
         f.write(struct.pack('<H', count))          # 12-13: count LE
         f.write(b'\x00\x00')                       # 14-15: pad
 
-        # address table at 0x10
+        # placeholder for address table
+        f.write(b'\x00' * (header_size - 16))
+
+        # process in batches
+        for batch_start in range(0, count, batch_size):
+            batch_end = min(batch_start + batch_size, count)
+            batch = sorted_images[batch_start:batch_end]
+            offset = f.tell()
+
+            for local_i, img in enumerate(batch):
+                i = batch_start + local_i
+                raw = img.get('jpg') or img.get('bmp') or img.get('data')
+                pil = _load_pil_image(raw)
+
+                if lossy:
+                    # JPG encode (lossy)
+                    w, h = pil.size
+                    buf = io.BytesIO()
+                    pil.convert('RGB').save(buf, 'JPEG', quality=quality)
+                    payload = buf.getvalue()
+                    compress_flag = 0
+                else:
+                    # RGB565 + LZO (lossless storage)
+                    w, h, rgb565 = _image_to_rgb565(pil)
+                    payload = _lzo_compress(rgb565)
+                    compress_flag = 1
+
+                # 16-byte info header
+                info = b'JXAG'
+                info += bytes([compress_flag, 0x00, 0x00, 0x10])
+                info += struct.pack('<HH', w, h)
+                info += struct.pack('<I', len(payload))
+
+                blob = info + payload
+                write_size = (len(blob) + 15) // 16 * 16
+                blob = blob.ljust(write_size, b'\x00')
+
+                addrs[i] = offset
+                f.write(blob)
+                offset += write_size
+
+                # free memory for this image
+                del raw, pil, payload, blob
+                if not lossy:
+                    del rgb565
+
+        # seek back and write address table
+        f.seek(16)
         for a in addrs:
             f.write(struct.pack('<I', a))
-
-        # pad to header_size
-        written = 16 + count * 4
-        if written < header_size:
-            f.write(b'\x00' * (header_size - written))
-
-        # image data
-        for blob in data_blobs:
-            f.write(blob)
 
     return count
