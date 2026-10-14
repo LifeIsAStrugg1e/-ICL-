@@ -16,8 +16,11 @@ from ICL_toolkit import extract, pack_ico, icl_to_ico, images_to_ico
 # 解压 ICL/ICO -> BMP
 count, fmt = extract("file.icl", "output_dir", fmt="bmp")
 
-# 打包 BMP -> JXAG ICO
-pack_ico([{'index': 0, 'bmp': bmp_bytes}], "output.ico")
+# 打包 BMP -> JXAG ICO（懒加载，逐批读取）
+pack_ico([{'index': 0, 'path': 'a.bmp'}], "output.ico")
+
+# 有损压缩（JPG 编码，quality 控制压缩率）
+pack_ico(images, "output.ico", lossy=True, quality=85)
 
 # ICL -> ICO 一步转换
 icl_to_ico("input.icl", "output.ico")
@@ -31,7 +34,7 @@ images_to_ico(["a.jpg", "b.png", "c.bmp"], "output.ico")
 | 函数 | 说明 |
 |------|------|
 | `extract(path, out_dir, fmt)` | 解压 ICL/ICO，fmt: raw/jpg/bmp/png |
-| `pack_ico(images, out_path)` | 打包 JXAG ICO |
+| `pack_ico(images, out_path, lossy, quality, batch_size)` | 打包 JXAG ICO |
 | `icl_to_ico(icl_path, ico_path)` | ICL 转 ICO |
 | `images_to_ico(paths, out_path)` | 图片文件转 ICO |
 | `folder_to_ico(folder, out_path)` | 文件夹内图片转 ICO |
@@ -41,6 +44,16 @@ images_to_ico(["a.jpg", "b.png", "c.bmp"], "output.ico")
 | `decode_jpg(data)` | 解码 JPG |
 | `lzo_compress(data)` | LZO 压缩 |
 | `lzo_decompress(data, size)` | LZO 解压 |
+
+### pack_ico 参数
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `images` | - | `[{'index': i, 'path': 'a.bmp'}]` 或 `[{'index': i, 'data': bytes}]` |
+| `out_path` | - | 输出 ICO 路径 |
+| `lossy` | `False` | False=LZO RGB565 无损, True=JPG 有损 |
+| `quality` | `85` | JPG 压缩率 (10-100)，仅 lossy=True 时生效 |
+| `batch_size` | `20` | 每批处理图片数，控制内存峰值 |
 
 ## 目录结构
 
