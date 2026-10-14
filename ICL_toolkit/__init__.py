@@ -2,7 +2,7 @@
 
 支持:
 - ICL 解压提取
-- JXAG ICO 打包/解压
+- JXAG ICO 打包/解压（懒加载、分批处理、有损/无损压缩）
 - ICL -> ICO 转换
 - 图片(JPG/PNG/BMP) -> ICO 转换
 - 与 C 提取器完全互通
@@ -13,14 +13,17 @@
     # 解压
     count, fmt = extract("file.icl", "output_dir", fmt="bmp")
 
-    # 打包
-    pack_ico([{'index': 0, 'bmp': bmp_bytes}], "output.ico")
+    # 打包（懒加载，内存友好）
+    pack_ico([{'index': 0, 'path': 'a.bmp'}], "output.ico")
+
+    # 有损压缩
+    pack_ico(images, "output.ico", lossy=True, quality=85)
 
     # ICL 转 ICO
     icl_to_ico("input.icl", "output.ico")
 
     # 图片转 ICO
-    images_to_ico(["a.jpg", "b.png"], "output.ico")
+    images_to_ico(["a.jpg", "b.png"], "output.ico", lossy=True, quality=75)
 """
 
 __version__ = '1.0.0'
