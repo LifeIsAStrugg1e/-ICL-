@@ -108,13 +108,16 @@ def _lzo_compress(data):
     return dst.raw[:out_len]
 
 
-def pack_ico(images, out_path):
-    """Pack images into JXAG ICO file (LZO-compressed RGB565).
+def pack_ico(images, out_path, lossy=False, quality=85):
+    """Pack images into JXAG ICO file.
+
+    lossy=False: LZO-compressed RGB565 (flag=1, lossless storage)
+    lossy=True:  JPG-encoded (flag=0, quality controls compression ratio)
 
     Format matches C tool ico_recovery_picture JXAG path:
       - 16-byte header: "JXAG" + ... + count at 0x0C (LE)
       - address table at 0x10, 4 bytes each LE
-      - per-image: 16-byte info header starting with "JXAG" + LZO RGB565 data
+      - per-image: 16-byte info header starting with "JXAG" + payload
     """
     if not images:
         raise ValueError("no images to pack")
@@ -130,27 +133,36 @@ def pack_ico(images, out_path):
     for i, img in enumerate(sorted(images, key=lambda x: x['index'])):
         raw = img.get('jpg') or img.get('bmp') or img.get('data')
         pil = _load_pil_image(raw)
-        w, h, rgb565 = _image_to_rgb565(pil)
-        
-        # LZO compress the RGB565 data
-        compressed = _lzo_compress(rgb565)
-        
+
+        if lossy:
+            # JPG encode (lossy)
+            w, h = pil.size
+            buf = io.BytesIO()
+            pil.convert('RGB').save(buf, 'JPEG', quality=quality)
+            payload = buf.getvalue()
+            compress_flag = 0
+        else:
+            # RGB565 + LZO (lossless storage)
+            w, h, rgb565 = _image_to_rgb565(pil)
+            payload = _lzo_compress(rgb565)
+            compress_flag = 1
+
         # 16-byte info header:
         #   0-3: "JXAG"
-        #   4: compress flag (1 = LZO)
+        #   4: compress flag (0=JPG, 1=LZO RGB565)
         #   5: 0x00
         #   6: 0x00
-        #   7: 0x10 (16 bits? matches working ICO)
+        #   7: 0x10
         #   8-9: width LE
         #   10-11: height LE
-        #   12-15: compressed length LE
+        #   12-15: payload length LE
         info = b'JXAG'
-        info += bytes([0x01, 0x00, 0x00, 0x10])  # compress=1, pad, 0x10
+        info += bytes([compress_flag, 0x00, 0x00, 0x10])
         info += struct.pack('<HH', w, h)
-        info += struct.pack('<I', len(compressed))
+        info += struct.pack('<I', len(payload))
         assert len(info) == 16
 
-        blob = info + compressed
+        blob = info + payload
         write_size = (len(blob) + 15) // 16 * 16
         blob = blob.ljust(write_size, b'\x00')
 

@@ -20,6 +20,8 @@ class App:
         self.output_format = tk.StringVar(value="raw")  # raw | jpg | bmp | png (extract) / ico (pack)
         self.output_path = tk.StringVar()
         self.quality = tk.IntVar(value=95)
+        self.lossy = tk.BooleanVar(value=False)
+        self.lossy_quality = tk.IntVar(value=85)
         self.running = False
 
         self._build_ui()
@@ -68,7 +70,25 @@ class App:
                             variable=self.output_format, value=val).pack(anchor="w", pady=1)
 
         self.frm_pack_fmt = ttk.Frame(frm_fmt)
-        # quality slider (both modes when outputting image files)
+
+        # lossy compression (pack + img2ico)
+        self.frm_lossy = ttk.Frame(frm_fmt)
+        self.frm_lossy.pack(fill="x", padx=8, pady=2)
+        ttk.Checkbutton(self.frm_lossy, text="有损压缩（JPG 编码）",
+                        variable=self.lossy,
+                        command=self._on_lossy_change).pack(anchor="w", pady=1)
+        self.frm_lossy_quality = ttk.Frame(self.frm_lossy)
+        self.frm_lossy_quality.pack(fill="x", padx=16, pady=(0, 2))
+        ttk.Label(self.frm_lossy_quality, text="压缩率:").pack(side="left")
+        self.scl_lossy_q = ttk.Scale(self.frm_lossy_quality, from_=10, to=100,
+                                     variable=self.lossy_quality, length=200)
+        self.scl_lossy_q.pack(side="left", padx=4)
+        self.lbl_lossy_q = ttk.Label(self.frm_lossy_quality, text="85")
+        self.lbl_lossy_q.pack(side="left")
+        self.lossy_quality.trace_add("write", lambda *_: self.lbl_lossy_q.config(
+            text=str(int(self.lossy_quality.get()))))
+
+        # quality slider (extract mode: JPG re-encode)
         self.frm_quality = ttk.Frame(frm_fmt)
         self.frm_quality.pack(fill="x", padx=8, pady=2)
         ttk.Label(self.frm_quality, text="JPG 质量:").pack(side="left")
@@ -127,6 +147,8 @@ class App:
             w.destroy()
         self.frm_pack_fmt.pack_forget()
         self.frm_extract_fmt.pack_forget()
+        self.frm_lossy.pack_forget()
+        self.frm_quality.pack_forget()
 
         if mode == "extract":
             self.frm_extract_fmt.pack(fill="x", padx=8, pady=2)
@@ -140,15 +162,18 @@ class App:
                 self.output_format.set("raw")
             self.lbl_out_desc.config(text="输出文件夹:")
             self.frm_quality.pack(fill="x", padx=8, pady=2)
-        elif mode == "img2ico":
+        elif mode in ("img2ico", "pack"):
             self.output_format.set("ico")
             self.lbl_out_desc.config(text="输出 ICO 文件:")
-            self.frm_quality.pack_forget()
-        else:  # pack
-            self.output_format.set("ico")
-            self.lbl_out_desc.config(text="输出 ICO 文件:")
-            self.frm_quality.pack_forget()
+            self.frm_lossy.pack(fill="x", padx=8, pady=2)
+            self._on_lossy_change()
         self.output_path.set("")
+
+    def _on_lossy_change(self):
+        if self.lossy.get():
+            self.frm_lossy_quality.pack(fill="x", padx=16, pady=(0, 2))
+        else:
+            self.frm_lossy_quality.pack_forget()
 
     # ---- file selection ----
 
@@ -295,13 +320,15 @@ class App:
         self._log(f"完成，共 {total_images} 张图片")
 
     def _do_pack(self, out_path):
-        fmt = self.output_format.get()
         total = len(self.input_paths)
+        lossy = self.lossy.get()
+        q = int(self.lossy_quality.get())
+        mode_tag = f"JPG q={q}" if lossy else "无损"
 
         if total == 1:
             path = self.input_paths[0]
             base = os.path.splitext(os.path.basename(path))[0]
-            self._log(f"[1/1] {os.path.basename(path)}")
+            self._log(f"[1/1] {os.path.basename(path)} ({mode_tag})")
 
             with open(path, 'rb') as f:
                 data = f.read()
@@ -322,7 +349,7 @@ class App:
                 self._status(f"打包 {ii+1}/{len(images)}")
                 self._progress((ii + 1) / len(images) * 100)
 
-            count = pack_ico(images, out_path)
+            count = pack_ico(images, out_path, lossy=lossy, quality=q)
             self._log(f"  打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes)")
             self._progress(100)
         else:
@@ -333,7 +360,7 @@ class App:
 
             for fi, path in enumerate(self.input_paths):
                 base = os.path.splitext(os.path.basename(path))[0]
-                self._log(f"[{fi+1}/{total}] {os.path.basename(path)}")
+                self._log(f"[{fi+1}/{total}] {os.path.basename(path)} ({mode_tag})")
 
                 with open(path, 'rb') as f:
                     data = f.read()
@@ -361,7 +388,7 @@ class App:
                 self._progress((fi + 1) / total * 100)
 
                 ico_path = os.path.join(out_dir, base + ".ico")
-                count = pack_ico(images, ico_path)
+                count = pack_ico(images, ico_path, lossy=lossy, quality=q)
                 self._log(f"  打包 {count} 张 -> {ico_path}")
 
             self._progress(100)
@@ -369,6 +396,9 @@ class App:
     def _do_img2ico(self, out_path):
         """图片文件直接打包为 JXAG ICO"""
         total = len(self.input_paths)
+        lossy = self.lossy.get()
+        q = int(self.lossy_quality.get())
+        mode_tag = f"JPG q={q}" if lossy else "无损"
         images = []
 
         for fi, path in enumerate(self.input_paths):
@@ -387,10 +417,10 @@ class App:
             self._log("没有读取到图片")
             return
 
-        self._status(f"打包 {len(images)} 张...")
-        count = pack_ico(images, out_path)
+        self._status(f"打包 {len(images)} 张 ({mode_tag})...")
+        count = pack_ico(images, out_path, lossy=lossy, quality=q)
         self._progress(100)
-        self._log(f"打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes)")
+        self._log(f"打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes) [{mode_tag}]")
 
 
 def main():
