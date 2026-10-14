@@ -394,30 +394,17 @@ class App:
             self._progress(100)
 
     def _do_img2ico(self, out_path):
-        """图片文件直接打包为 JXAG ICO"""
+        """图片文件直接打包为 JXAG ICO（懒加载，逐批读取）"""
         total = len(self.input_paths)
         lossy = self.lossy.get()
         q = int(self.lossy_quality.get())
         mode_tag = f"JPG q={q}" if lossy else "无损"
-        images = []
 
-        for fi, path in enumerate(self.input_paths):
-            base = os.path.splitext(os.path.basename(path))[0]
-            self._status(f"读取 {fi+1}/{total}: {base}")
-            self._progress((fi + 1) / total * 50)
+        # 懒加载：只传路径，pack_ico 内部逐批读取
+        images = [{'index': fi, 'path': path}
+                  for fi, path in enumerate(self.input_paths)]
 
-            try:
-                with open(path, 'rb') as f:
-                    raw = f.read()
-                images.append({'index': fi, 'data': raw})
-            except Exception as e:
-                self._log(f"  错误 {base}: {e}")
-
-        if not images:
-            self._log("没有读取到图片")
-            return
-
-        self._status(f"打包 {len(images)} 张 ({mode_tag})...")
+        self._status(f"打包 {total} 张 ({mode_tag})...")
         count = pack_ico(images, out_path, lossy=lossy, quality=q)
         self._progress(100)
         self._log(f"打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes) [{mode_tag}]")
