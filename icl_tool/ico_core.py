@@ -111,6 +111,9 @@ def _lzo_compress(data):
 def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
     """Pack images into JXAG ICO file.
 
+    images: list of dicts. Each dict must have 'index' and one of:
+            'path' (file path, loaded lazily per batch) OR
+            'jpg'/'bmp'/'data' (raw bytes, loaded eagerly)
     lossy=False: LZO-compressed RGB565 (flag=1, lossless storage)
     lossy=True:  JPG-encoded (flag=0, quality controls compression ratio)
     batch_size:  number of images to process in memory at once (default 20)
@@ -150,7 +153,15 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
 
             for local_i, img in enumerate(batch):
                 i = batch_start + local_i
-                raw = img.get('jpg') or img.get('bmp') or img.get('data')
+
+                # Lazy load from path, or use pre-loaded bytes
+                path = img.get('path')
+                if path:
+                    with open(path, 'rb') as pf:
+                        raw = pf.read()
+                else:
+                    raw = img.get('jpg') or img.get('bmp') or img.get('data')
+
                 pil = _load_pil_image(raw)
 
                 if lossy:
