@@ -6,7 +6,7 @@ from ..lzo import compress as lzo_compress
 from ..bmp import load_image, bmp_to_rgb565
 
 
-def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
+def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=0):
     """打包 JXAG ICO 文件
 
     images: list of dicts. Each dict must have 'index' and one of:
@@ -15,6 +15,7 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
     lossy=False: LZO RGB565 (flag=1, 无损存储)
     lossy=True:  JPG 编码 (flag=0, quality 控制压缩率)
     batch_size:  每批处理的图片数（控制内存峰值）
+    rotation:    0/90/180/270 度，压缩前旋转
     返回打包的图片数量
     """
     if not images:
@@ -52,6 +53,9 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
                     raw = img.get('jpg') or img.get('bmp') or img.get('data')
 
                 pil = load_image(raw)
+
+                if rotation in (90, 180, 270):
+                    pil = pil.rotate(rotation, expand=True)
 
                 if lossy:
                     w, h = pil.size
