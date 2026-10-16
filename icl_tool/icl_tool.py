@@ -22,6 +22,7 @@ class App:
         self.quality = tk.IntVar(value=95)
         self.lossy = tk.BooleanVar(value=False)
         self.lossy_quality = tk.IntVar(value=85)
+        self.rotation = tk.StringVar(value="0")
         self.running = False
 
         self._build_ui()
@@ -88,6 +89,14 @@ class App:
         self.lossy_quality.trace_add("write", lambda *_: self.lbl_lossy_q.config(
             text=str(int(self.lossy_quality.get()))))
 
+        # rotation (pack + img2ico)
+        self.frm_rotate = ttk.Frame(frm_fmt)
+        ttk.Label(self.frm_rotate, text="旋转:").pack(side="left")
+        for val, label in [("0", "不旋转"), ("90", "90°"),
+                           ("180", "180°"), ("270", "270°")]:
+            ttk.Radiobutton(self.frm_rotate, text=label,
+                            variable=self.rotation, value=val).pack(side="left", padx=4)
+
         # quality slider (extract mode: JPG re-encode)
         self.frm_quality = ttk.Frame(frm_fmt)
         self.frm_quality.pack(fill="x", padx=8, pady=2)
@@ -149,6 +158,7 @@ class App:
         self.frm_extract_fmt.pack_forget()
         self.frm_lossy.pack_forget()
         self.frm_quality.pack_forget()
+        self.frm_rotate.pack_forget()
 
         if mode == "extract":
             self.frm_extract_fmt.pack(fill="x", padx=8, pady=2)
@@ -166,6 +176,7 @@ class App:
             self.output_format.set("ico")
             self.lbl_out_desc.config(text="输出 ICO 文件:")
             self.frm_lossy.pack(fill="x", padx=8, pady=2)
+            self.frm_rotate.pack(fill="x", padx=8, pady=2)
             self._on_lossy_change()
         self.output_path.set("")
 
@@ -323,7 +334,10 @@ class App:
         total = len(self.input_paths)
         lossy = self.lossy.get()
         q = int(self.lossy_quality.get())
+        rot = int(self.rotation.get())
         mode_tag = f"JPG q={q}" if lossy else "无损"
+        if rot:
+            mode_tag += f", 旋转{rot}°"
 
         if total == 1:
             path = self.input_paths[0]
@@ -349,7 +363,7 @@ class App:
                 self._status(f"打包 {ii+1}/{len(images)}")
                 self._progress((ii + 1) / len(images) * 100)
 
-            count = pack_ico(images, out_path, lossy=lossy, quality=q)
+            count = pack_ico(images, out_path, lossy=lossy, quality=q, rotation=rot)
             self._log(f"  打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes)")
             self._progress(100)
         else:
@@ -388,7 +402,7 @@ class App:
                 self._progress((fi + 1) / total * 100)
 
                 ico_path = os.path.join(out_dir, base + ".ico")
-                count = pack_ico(images, ico_path, lossy=lossy, quality=q)
+                count = pack_ico(images, ico_path, lossy=lossy, quality=q, rotation=rot)
                 self._log(f"  打包 {count} 张 -> {ico_path}")
 
             self._progress(100)
@@ -398,14 +412,17 @@ class App:
         total = len(self.input_paths)
         lossy = self.lossy.get()
         q = int(self.lossy_quality.get())
+        rot = int(self.rotation.get())
         mode_tag = f"JPG q={q}" if lossy else "无损"
+        if rot:
+            mode_tag += f", 旋转{rot}°"
 
         # 懒加载：只传路径，pack_ico 内部逐批读取
         images = [{'index': fi, 'path': path}
                   for fi, path in enumerate(self.input_paths)]
 
         self._status(f"打包 {total} 张 ({mode_tag})...")
-        count = pack_ico(images, out_path, lossy=lossy, quality=q)
+        count = pack_ico(images, out_path, lossy=lossy, quality=q, rotation=rot)
         self._progress(100)
         self._log(f"打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes) [{mode_tag}]")
 

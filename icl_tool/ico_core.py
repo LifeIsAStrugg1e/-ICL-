@@ -108,7 +108,7 @@ def _lzo_compress(data):
     return dst.raw[:out_len]
 
 
-def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
+def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=0):
     """Pack images into JXAG ICO file.
 
     images: list of dicts. Each dict must have 'index' and one of:
@@ -117,6 +117,7 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
     lossy=False: LZO-compressed RGB565 (flag=1, lossless storage)
     lossy=True:  JPG-encoded (flag=0, quality controls compression ratio)
     batch_size:  number of images to process in memory at once (default 20)
+    rotation:    0/90/180/270 degrees, applied before compression
 
     Format matches C tool ico_recovery_picture JXAG path:
       - 16-byte header: "JXAG" + ... + count at 0x0C (LE)
@@ -163,6 +164,9 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20):
                     raw = img.get('jpg') or img.get('bmp') or img.get('data')
 
                 pil = _load_pil_image(raw)
+
+                if rotation in (90, 180, 270):
+                    pil = pil.rotate(rotation, expand=True)
 
                 if lossy:
                     # JPG encode (lossy)

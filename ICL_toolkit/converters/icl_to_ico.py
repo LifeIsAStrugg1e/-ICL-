@@ -32,8 +32,12 @@ def icl_to_bmp(icl_path, bmp_dir):
     return paths
 
 
-def icl_to_ico(icl_path, ico_path, bmp_dir=None, verbose=False):
-    """ICL -> ICO 转换，返回 {bmp: N, ico: N, ico_size: N}"""
+def icl_to_ico(icl_path, ico_path, bmp_dir=None, verbose=False,
+               lossy=False, quality=85, batch_size=20, rotation=0):
+    """ICL -> ICO 转换，返回 {bmp: N, ico: N, ico_size: N}
+
+    lossy/quality/batch_size/rotation 透传给 pack_ico
+    """
     if bmp_dir is None:
         bmp_dir = os.path.splitext(ico_path)[0] + "_bmp"
 
@@ -46,13 +50,11 @@ def icl_to_ico(icl_path, ico_path, bmp_dir=None, verbose=False):
         print("  保存 %d 个 BMP -> %s" % (len(bmp_paths), bmp_dir))
         print("[2/2] BMP -> ICO: %s" % ico_path)
 
-    # 读取 BMP 打包
-    images = []
-    for i, p in enumerate(bmp_paths):
-        with open(p, 'rb') as f:
-            images.append({'index': i, 'bmp': f.read()})
+    # 懒加载：只传路径
+    images = [{'index': i, 'path': p} for i, p in enumerate(bmp_paths)]
 
-    count = pack_ico(images, ico_path)
+    count = pack_ico(images, ico_path, lossy=lossy, quality=quality,
+                     batch_size=batch_size, rotation=rotation)
     size = os.path.getsize(ico_path)
 
     if verbose:

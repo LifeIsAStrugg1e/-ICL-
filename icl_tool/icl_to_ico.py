@@ -41,7 +41,7 @@ def icl_to_bmp(icl_path, bmp_dir):
     return paths
 
 
-def bmp_to_ico(bmp_paths, ico_path):
+def bmp_to_ico(bmp_paths, ico_path, lossy=False, quality=85, rotation=0):
     """步骤2: BMP 文件 -> 打包 ICO。"""
     files = {}
     for p in bmp_paths:
@@ -52,16 +52,14 @@ def bmp_to_ico(bmp_paths, ico_path):
     if not files:
         raise ValueError("没有 BMP 文件")
 
-    images = []
-    for idx in sorted(files.keys()):
-        with open(files[idx], 'rb') as f:
-            bmp = f.read()
-        images.append({'index': idx, 'bmp': bmp})
+    # 懒加载：只传路径
+    images = [{'index': idx, 'path': files[idx]} for idx in sorted(files.keys())]
 
-    return pack_ico(images, ico_path)
+    return pack_ico(images, ico_path, lossy=lossy, quality=quality, rotation=rotation)
 
 
-def convert(icl_path, bmp_dir=None, ico_path=None, verbose=True):
+def convert(icl_path, bmp_dir=None, ico_path=None, verbose=True,
+            lossy=False, quality=85, rotation=0):
     """ICL -> BMP -> ICO"""
     if bmp_dir is None and ico_path is None:
         base = os.path.splitext(icl_path)[0]
@@ -86,7 +84,7 @@ def convert(icl_path, bmp_dir=None, ico_path=None, verbose=True):
         tmp_dir = bmp_dir or (os.path.splitext(ico_path)[0] + "_tmp_bmp")
         bmp_paths = icl_to_bmp(icl_path, tmp_dir)
 
-    count = bmp_to_ico(bmp_paths, ico_path)
+    count = bmp_to_ico(bmp_paths, ico_path, lossy=lossy, quality=quality, rotation=rotation)
     size = os.path.getsize(ico_path)
 
     if verbose:
