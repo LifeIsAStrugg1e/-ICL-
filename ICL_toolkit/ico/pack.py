@@ -55,7 +55,7 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=
                 pil = load_image(raw)
 
                 if rotation in (90, 180, 270):
-                    pil = pil.rotate(rotation, expand=True)
+                    pil = pil.rotate(-rotation, expand=True)
 
                 if lossy:
                     w, h = pil.size
