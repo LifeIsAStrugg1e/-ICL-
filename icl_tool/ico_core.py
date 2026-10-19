@@ -108,16 +108,18 @@ def _lzo_compress(data):
     return dst.raw[:out_len]
 
 
-def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=0):
+def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation=0):
     """Pack images into JXAG ICO file.
 
     images: list of dicts. Each dict must have 'index' and one of:
             'path' (file path, loaded lazily per batch) OR
             'jpg'/'bmp'/'data' (raw bytes, loaded eagerly)
-    lossy=False: LZO-compressed RGB565 (flag=1, lossless storage)
-    lossy=True:  JPG-encoded (flag=0, quality controls compression ratio)
-    batch_size:  number of images to process in memory at once (default 20)
-    rotation:    0/90/180/270 degrees, applied before compression
+    fmt:    'rgb565' = 16-bit LZO (C tool compatible, flag=1)
+            'rgb24'  = 24-bit LZO lossless (flag=2, NOT C tool compatible)
+            'jpg'    = 24-bit JPG lossy (C tool compatible, flag=0)
+    quality: JPG quality 10-100 (only used when fmt='jpg')
+    batch_size: number of images to process in memory at once (default 20)
+    rotation: 0/90/180/270 degrees, applied before compression (clockwise)
 
     Format matches C tool ico_recovery_picture JXAG path:
       - 16-byte header: "JXAG" + ... + count at 0x0C (LE)
@@ -126,6 +128,8 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=
     """
     if not images:
         raise ValueError("no images to pack")
+    if fmt not in ('rgb565', 'rgb24', 'jpg'):
+        raise ValueError("fmt must be 'rgb565', 'rgb24', or 'jpg'")
 
     sorted_images = sorted(images, key=lambda x: x['index'])
     count = len(sorted_images)
@@ -168,15 +172,22 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=
                 if rotation in (90, 180, 270):
                     pil = pil.rotate(-rotation, expand=True)
 
-                if lossy:
+                if fmt == 'jpg':
                     # JPG encode (lossy)
                     w, h = pil.size
                     buf = io.BytesIO()
                     pil.convert('RGB').save(buf, 'JPEG', quality=quality)
                     payload = buf.getvalue()
                     compress_flag = 0
-                else:
-                    # RGB565 + LZO (lossless storage)
+                elif fmt == 'rgb24':
+                    # 24-bit RGB + LZO (lossless, NOT C tool compatible)
+                    pil = pil.convert('RGB')
+                    w, h = pil.size
+                    rgb24 = pil.tobytes()
+                    payload = _lzo_compress(rgb24)
+                    compress_flag = 2
+                else:  # rgb565 (default)
+                    # RGB565 + LZO (lossless storage, C tool compatible)
                     w, h, rgb565 = _image_to_rgb565(pil)
                     payload = _lzo_compress(rgb565)
                     compress_flag = 1
@@ -197,8 +208,10 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=
 
                 # free memory for this image
                 del raw, pil, payload, blob
-                if not lossy:
+                if fmt == 'rgb565':
                     del rgb565
+                elif fmt == 'rgb24':
+                    del rgb24
 
         # seek back and write address table
         f.seek(16)

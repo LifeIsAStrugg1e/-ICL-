@@ -33,10 +33,10 @@ def icl_to_bmp(icl_path, bmp_dir):
 
 
 def icl_to_ico(icl_path, ico_path, bmp_dir=None, verbose=False,
-               lossy=False, quality=85, batch_size=20, rotation=0):
+               fmt='rgb565', quality=90, batch_size=20, rotation=0):
     """ICL -> ICO 转换，返回 {bmp: N, ico: N, ico_size: N}
 
-    lossy/quality/batch_size/rotation 透传给 pack_ico
+    fmt/quality/batch_size/rotation 透传给 pack_ico
     """
     if bmp_dir is None:
         bmp_dir = os.path.splitext(ico_path)[0] + "_bmp"
@@ -53,7 +53,7 @@ def icl_to_ico(icl_path, ico_path, bmp_dir=None, verbose=False,
     # 懒加载：只传路径
     images = [{'index': i, 'path': p} for i, p in enumerate(bmp_paths)]
 
-    count = pack_ico(images, ico_path, lossy=lossy, quality=quality,
+    count = pack_ico(images, ico_path, fmt=fmt, quality=quality,
                      batch_size=batch_size, rotation=rotation)
     size = os.path.getsize(ico_path)
 

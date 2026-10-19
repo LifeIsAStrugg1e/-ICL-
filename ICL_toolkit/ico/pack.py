@@ -6,20 +6,24 @@ from ..lzo import compress as lzo_compress
 from ..bmp import load_image, bmp_to_rgb565
 
 
-def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=0):
+def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation=0):
     """打包 JXAG ICO 文件
 
     images: list of dicts. Each dict must have 'index' and one of:
             'path' (file path, loaded lazily per batch) OR
             'jpg'/'bmp'/'data' (raw bytes)
-    lossy=False: LZO RGB565 (flag=1, 无损存储)
-    lossy=True:  JPG 编码 (flag=0, quality 控制压缩率)
-    batch_size:  每批处理的图片数（控制内存峰值）
-    rotation:    0/90/180/270 度，压缩前旋转
+    fmt:    'rgb565' = 16-bit LZO (C工具兼容, flag=1)
+            'rgb24'  = 24-bit LZO 无损 (flag=2, 不兼容C工具)
+            'jpg'    = 24-bit JPG 有损 (C工具兼容, flag=0)
+    quality: JPG 压缩率 10-100 (仅 fmt='jpg' 时生效)
+    batch_size: 每批处理的图片数（控制内存峰值）
+    rotation: 0/90/180/270 度，压缩前顺时针旋转
     返回打包的图片数量
     """
     if not images:
         raise ValueError("no images to pack")
+    if fmt not in ('rgb565', 'rgb24', 'jpg'):
+        raise ValueError("fmt must be 'rgb565', 'rgb24', or 'jpg'")
 
     sorted_images = sorted(images, key=lambda x: x['index'])
     count = len(sorted_images)
@@ -57,14 +61,20 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=
                 if rotation in (90, 180, 270):
                     pil = pil.rotate(-rotation, expand=True)
 
-                if lossy:
+                if fmt == 'jpg':
                     w, h = pil.size
                     buf = io.BytesIO()
                     pil.convert('RGB').save(buf, 'JPEG', quality=quality)
                     payload = buf.getvalue()
                     compress_flag = 0
-                else:
-                    w, h, rgb565 = bmp_to_rgb565(_pil_to_bmp(pil))
+                elif fmt == 'rgb24':
+                    pil = pil.convert('RGB')
+                    w, h = pil.size
+                    rgb24 = pil.tobytes()
+                    payload = lzo_compress(rgb24)
+                    compress_flag = 2
+                else:  # rgb565
+                    w, h, rgb565 = _pil_to_rgb565(pil)
                     payload = lzo_compress(rgb565)
                     compress_flag = 1
 
@@ -82,8 +92,10 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=
                 offset += write_size
 
                 del raw, pil, payload, blob
-                if not lossy:
+                if fmt == 'rgb565':
                     del rgb565
+                elif fmt == 'rgb24':
+                    del rgb24
 
         f.seek(16)
         for a in addrs:
@@ -92,9 +104,14 @@ def pack_ico(images, out_path, lossy=False, quality=85, batch_size=20, rotation=
     return count
 
 
-def _pil_to_bmp(pil):
-    """PIL Image -> BMP bytes"""
+def _pil_to_rgb565(pil):
+    """PIL Image -> (width, height, RGB565 bytes top-down LE)"""
+    import numpy as np
     pil = pil.convert('RGB')
-    buf = io.BytesIO()
-    pil.save(buf, 'BMP')
-    return buf.getvalue()
+    w, h = pil.size
+    arr = np.frombuffer(pil.tobytes(), dtype=np.uint8).reshape(h, w, 3)
+    r = (arr[:, :, 0] >> 3).astype(np.uint16)
+    g = (arr[:, :, 1] >> 2).astype(np.uint16)
+    b = (arr[:, :, 2] >> 3).astype(np.uint16)
+    rgb565 = (r << 11) | (g << 5) | b
+    return w, h, rgb565.astype('<u2').tobytes()

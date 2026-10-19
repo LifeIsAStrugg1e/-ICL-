@@ -69,11 +69,32 @@ def _extract_image(data, addr, filesize, index):
         bmp = rgb565_to_bmp(rgb565, w, h)
         return {'index': index, 'width': w, 'height': h, 'data': bmp,
                 'type': typ, 'fmt': 'JXAG_LZO'}
+
+    # LZO compressed RGB24 (24-bit lossless, flag=2)
+    elif typ == 2:
+        import io
+        from PIL import Image
+        rgb24 = lzo_decompress(payload, w * h * 3)
+        pil = Image.frombytes('RGB', (w, h), rgb24)
+        buf = io.BytesIO()
+        pil.save(buf, 'BMP')
+        return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
+                'type': typ, 'fmt': 'JXAG_LZO24'}
+
     else:
         # uncompressed RGB565
         if length == w * h * 2:
             bmp = rgb565_to_bmp(payload, w, h)
             return {'index': index, 'width': w, 'height': h, 'data': bmp,
                     'type': typ, 'fmt': 'JXAG_raw565'}
+        # uncompressed RGB24
+        if length == w * h * 3:
+            import io
+            from PIL import Image
+            pil = Image.frombytes('RGB', (w, h), payload)
+            buf = io.BytesIO()
+            pil.save(buf, 'BMP')
+            return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
+                    'type': typ, 'fmt': 'JXAG_raw24'}
 
     return None

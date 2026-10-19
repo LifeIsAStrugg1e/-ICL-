@@ -20,8 +20,8 @@ class App:
         self.output_format = tk.StringVar(value="raw")  # raw | jpg | bmp | png (extract) / ico (pack)
         self.output_path = tk.StringVar()
         self.quality = tk.IntVar(value=95)
-        self.lossy = tk.BooleanVar(value=False)
-        self.lossy_quality = tk.IntVar(value=85)
+        self.comp_fmt = tk.StringVar(value="rgb565")  # rgb565 | rgb24 | jpg
+        self.lossy_quality = tk.IntVar(value=90)
         self.rotation = tk.StringVar(value="0")
         self.running = False
 
@@ -72,19 +72,22 @@ class App:
 
         self.frm_pack_fmt = ttk.Frame(frm_fmt)
 
-        # lossy compression (pack + img2ico)
+        # compression format (pack + img2ico)
         self.frm_lossy = ttk.Frame(frm_fmt)
         self.frm_lossy.pack(fill="x", padx=8, pady=2)
-        ttk.Checkbutton(self.frm_lossy, text="有损压缩（JPG 编码）",
-                        variable=self.lossy,
-                        command=self._on_lossy_change).pack(anchor="w", pady=1)
+        ttk.Label(self.frm_lossy, text="压缩格式:").pack(anchor="w", pady=1)
+        for val, label in [("rgb565", "RGB565 16-bit 无损（C工具兼容）"),
+                           ("rgb24", "RGB24 24-bit 无损"),
+                           ("jpg", "JPG 24-bit 有损压缩")]:
+            ttk.Radiobutton(self.frm_lossy, text=label,
+                            variable=self.comp_fmt, value=val,
+                            command=self._on_fmt_change).pack(anchor="w", pady=1, padx=16)
         self.frm_lossy_quality = ttk.Frame(self.frm_lossy)
-        self.frm_lossy_quality.pack(fill="x", padx=16, pady=(0, 2))
         ttk.Label(self.frm_lossy_quality, text="压缩率:").pack(side="left")
         self.scl_lossy_q = ttk.Scale(self.frm_lossy_quality, from_=10, to=100,
                                      variable=self.lossy_quality, length=200)
         self.scl_lossy_q.pack(side="left", padx=4)
-        self.lbl_lossy_q = ttk.Label(self.frm_lossy_quality, text="85")
+        self.lbl_lossy_q = ttk.Label(self.frm_lossy_quality, text="90")
         self.lbl_lossy_q.pack(side="left")
         self.lossy_quality.trace_add("write", lambda *_: self.lbl_lossy_q.config(
             text=str(int(self.lossy_quality.get()))))
@@ -177,11 +180,11 @@ class App:
             self.lbl_out_desc.config(text="输出 ICO 文件:")
             self.frm_lossy.pack(fill="x", padx=8, pady=2)
             self.frm_rotate.pack(fill="x", padx=8, pady=2)
-            self._on_lossy_change()
+            self._on_fmt_change()
         self.output_path.set("")
 
-    def _on_lossy_change(self):
-        if self.lossy.get():
+    def _on_fmt_change(self):
+        if self.comp_fmt.get() == "jpg":
             self.frm_lossy_quality.pack(fill="x", padx=16, pady=(0, 2))
         else:
             self.frm_lossy_quality.pack_forget()
@@ -332,12 +335,12 @@ class App:
 
     def _do_pack(self, out_path):
         total = len(self.input_paths)
-        lossy = self.lossy.get()
+        fmt = self.comp_fmt.get()
         q = int(self.lossy_quality.get())
         rot = int(self.rotation.get())
-        mode_tag = f"JPG q={q}" if lossy else "无损"
+        fmt_tag = {'rgb565': 'RGB565无损', 'rgb24': 'RGB24无损', 'jpg': f'JPG q={q}'}[fmt]
         if rot:
-            mode_tag += f", 旋转{rot}°"
+            fmt_tag += f", 旋转{rot}°"
 
         if total == 1:
             path = self.input_paths[0]
@@ -363,7 +366,7 @@ class App:
                 self._status(f"打包 {ii+1}/{len(images)}")
                 self._progress((ii + 1) / len(images) * 100)
 
-            count = pack_ico(images, out_path, lossy=lossy, quality=q, rotation=rot)
+            count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=rot)
             self._log(f"  打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes)")
             self._progress(100)
         else:
@@ -402,7 +405,7 @@ class App:
                 self._progress((fi + 1) / total * 100)
 
                 ico_path = os.path.join(out_dir, base + ".ico")
-                count = pack_ico(images, ico_path, lossy=lossy, quality=q, rotation=rot)
+                count = pack_ico(images, ico_path, fmt=fmt, quality=q, rotation=rot)
                 self._log(f"  打包 {count} 张 -> {ico_path}")
 
             self._progress(100)
@@ -410,21 +413,21 @@ class App:
     def _do_img2ico(self, out_path):
         """图片文件直接打包为 JXAG ICO（懒加载，逐批读取）"""
         total = len(self.input_paths)
-        lossy = self.lossy.get()
+        fmt = self.comp_fmt.get()
         q = int(self.lossy_quality.get())
         rot = int(self.rotation.get())
-        mode_tag = f"JPG q={q}" if lossy else "无损"
+        fmt_tag = {'rgb565': 'RGB565无损', 'rgb24': 'RGB24无损', 'jpg': f'JPG q={q}'}[fmt]
         if rot:
-            mode_tag += f", 旋转{rot}°"
+            fmt_tag += f", 旋转{rot}°"
 
         # 懒加载：只传路径，pack_ico 内部逐批读取
         images = [{'index': fi, 'path': path}
                   for fi, path in enumerate(self.input_paths)]
 
-        self._status(f"打包 {total} 张 ({mode_tag})...")
-        count = pack_ico(images, out_path, lossy=lossy, quality=q, rotation=rot)
+        self._status(f"打包 {total} 张 ({fmt_tag})...")
+        count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=rot)
         self._progress(100)
-        self._log(f"打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes) [{mode_tag}]")
+        self._log(f"打包 {count} 张 -> {out_path} ({os.path.getsize(out_path)} bytes) [{fmt_tag}]")
 
 
 def main():

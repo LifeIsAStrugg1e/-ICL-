@@ -115,12 +115,37 @@ def _extract_jxag_image(data, addr, filesize, index):
             bmp = _rgb565_to_bmp(outbuf.raw, w, h)
             return {'index': index, 'width': w, 'height': h, 'data': bmp,
                     'type': typ, 'fmt': 'JXAG_LZO'}
+
+    # LZO compressed RGB24 (24-bit lossless, flag=2)
+    elif typ == 2:
+        out_size = w * h * 3
+        dll = _load_lzo()
+        outbuf = ctypes.create_string_buffer(out_size)
+        n = dll.lzo_decompress(payload, length, out_size, outbuf)
+        if n == out_size:
+            from PIL import Image
+            pil = Image.frombytes('RGB', (w, h), outbuf.raw)
+            import io as _io
+            buf = _io.BytesIO()
+            pil.save(buf, 'BMP')
+            return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
+                    'type': typ, 'fmt': 'JXAG_LZO24'}
+
     else:
         # uncompressed RGB565
         if length == w * h * 2:
             bmp = _rgb565_to_bmp(payload, w, h)
             return {'index': index, 'width': w, 'height': h, 'data': bmp,
                     'type': typ, 'fmt': 'JXAG_raw565'}
+        # uncompressed RGB24
+        if length == w * h * 3:
+            from PIL import Image
+            pil = Image.frombytes('RGB', (w, h), payload)
+            import io as _io
+            buf = _io.BytesIO()
+            pil.save(buf, 'BMP')
+            return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
+                    'type': typ, 'fmt': 'JXAG_raw24'}
 
     return None
 
