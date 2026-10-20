@@ -178,8 +178,8 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                     buf = io.BytesIO()
                     pil.convert('RGB').save(buf, 'JPEG', quality=quality)
                     payload = buf.getvalue()
-                    compress_flag = 0
-                    byte7 = 0x10
+                    compress_flag = 2
+                    byte7 = 0x20
                 elif fmt == 'rgb24':
                     # RGBA32 + LZO (24-bit lossless, byte[7]=32, flag=1)
                     pil = pil.convert('RGBA')
