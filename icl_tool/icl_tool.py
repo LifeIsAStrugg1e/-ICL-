@@ -19,7 +19,6 @@ class App:
         self.mode = tk.StringVar(value="extract")   # extract | pack | img2ico
         self.output_format = tk.StringVar(value="raw")  # raw | jpg | bmp | png (extract) / ico (pack)
         self.output_path = tk.StringVar()
-        self.quality = tk.IntVar(value=95)
         self.comp_fmt = tk.StringVar(value="rgb565")  # rgb565 | rgb24 | jpg
         self.lossy_quality = tk.IntVar(value=90)
         self.rotation = tk.StringVar(value="0")
@@ -100,18 +99,6 @@ class App:
             ttk.Radiobutton(self.frm_rotate, text=label,
                             variable=self.rotation, value=val).pack(side="left", padx=4)
 
-        # quality slider (extract mode: JPG re-encode)
-        self.frm_quality = ttk.Frame(frm_fmt)
-        self.frm_quality.pack(fill="x", padx=8, pady=2)
-        ttk.Label(self.frm_quality, text="JPG 质量:").pack(side="left")
-        self.scl_quality = ttk.Scale(self.frm_quality, from_=50, to=100,
-                                     variable=self.quality, length=200)
-        self.scl_quality.pack(side="left", padx=4)
-        self.lbl_quality = ttk.Label(self.frm_quality, text="95")
-        self.lbl_quality.pack(side="left")
-        self.quality.trace_add("write", lambda *_: self.lbl_quality.config(
-            text=str(int(self.quality.get()))))
-
         # ===== output path =====
         frm_out = ttk.LabelFrame(self.root, text="输出路径")
         frm_out.pack(fill="x", **pad)
@@ -160,7 +147,6 @@ class App:
         self.frm_pack_fmt.pack_forget()
         self.frm_extract_fmt.pack_forget()
         self.frm_lossy.pack_forget()
-        self.frm_quality.pack_forget()
         self.frm_rotate.pack_forget()
 
         if mode == "extract":
@@ -174,7 +160,6 @@ class App:
             if self.output_format.get() not in ("raw", "jpg", "bmp", "png"):
                 self.output_format.set("raw")
             self.lbl_out_desc.config(text="输出文件夹:")
-            self.frm_quality.pack(fill="x", padx=8, pady=2)
         elif mode in ("img2ico", "pack"):
             self.output_format.set("ico")
             self.lbl_out_desc.config(text="输出 ICO 文件:")
@@ -311,7 +296,7 @@ class App:
 
     def _do_extract(self, out_dir):
         fmt = self.output_format.get()
-        quality = int(self.quality.get())
+        quality = 100  # 解压使用最高质量
         total = len(self.input_paths)
         total_images = 0
 
