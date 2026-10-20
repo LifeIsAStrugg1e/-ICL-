@@ -46,6 +46,7 @@ def _extract_image(data, addr, filesize, index):
         return None
 
     typ = struct.unpack('<H', data[addr + 4:addr + 6])[0]
+    byte7 = data[addr + 7]
     w = struct.unpack('<H', data[addr + 8:addr + 10])[0]
     h = struct.unpack('<H', data[addr + 10:addr + 12])[0]
     length = struct.unpack('<I', data[addr + 12:addr + 16])[0]
@@ -63,14 +64,24 @@ def _extract_image(data, addr, filesize, index):
         return {'index': index, 'width': w, 'height': h, 'data': payload,
                 'type': typ, 'fmt': 'JXAG_encoded'}
 
-    # LZO compressed RGB565
+    # LZO compressed (flag=1)
     if typ == 1:
-        rgb565 = lzo_decompress(payload, w * h * 2)
-        bmp = rgb565_to_bmp(rgb565, w, h)
-        return {'index': index, 'width': w, 'height': h, 'data': bmp,
-                'type': typ, 'fmt': 'JXAG_LZO'}
+        import io
+        from PIL import Image
+        if byte7 == 0x20:  # RGBA32
+            rgba32 = lzo_decompress(payload, w * h * 4)
+            pil = Image.frombytes('RGBA', (w, h), rgba32)
+            buf = io.BytesIO()
+            pil.save(buf, 'BMP')
+            return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
+                    'type': typ, 'fmt': 'JXAG_LZO32'}
+        else:  # RGB565
+            rgb565 = lzo_decompress(payload, w * h * 2)
+            bmp = rgb565_to_bmp(rgb565, w, h)
+            return {'index': index, 'width': w, 'height': h, 'data': bmp,
+                    'type': typ, 'fmt': 'JXAG_LZO'}
 
-    # LZO compressed RGB24 (24-bit lossless, flag=2)
+    # LZO compressed RGB24 (flag=2, non-standard)
     elif typ == 2:
         import io
         from PIL import Image
@@ -82,19 +93,19 @@ def _extract_image(data, addr, filesize, index):
                 'type': typ, 'fmt': 'JXAG_LZO24'}
 
     else:
+        import io
+        from PIL import Image
         # uncompressed RGB565
         if length == w * h * 2:
             bmp = rgb565_to_bmp(payload, w, h)
             return {'index': index, 'width': w, 'height': h, 'data': bmp,
                     'type': typ, 'fmt': 'JXAG_raw565'}
-        # uncompressed RGB24
-        if length == w * h * 3:
-            import io
-            from PIL import Image
-            pil = Image.frombytes('RGB', (w, h), payload)
+        # uncompressed RGBA32
+        if length == w * h * 4:
+            pil = Image.frombytes('RGBA', (w, h), payload)
             buf = io.BytesIO()
             pil.save(buf, 'BMP')
             return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
-                    'type': typ, 'fmt': 'JXAG_raw24'}
+                    'type': typ, 'fmt': 'JXAG_raw32'}
 
     return None

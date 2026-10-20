@@ -179,22 +179,25 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                     pil.convert('RGB').save(buf, 'JPEG', quality=quality)
                     payload = buf.getvalue()
                     compress_flag = 0
+                    byte7 = 0x10
                 elif fmt == 'rgb24':
-                    # 24-bit RGB + LZO (lossless, NOT C tool compatible)
-                    pil = pil.convert('RGB')
+                    # RGBA32 + LZO (24-bit lossless, byte[7]=32, flag=1)
+                    pil = pil.convert('RGBA')
                     w, h = pil.size
-                    rgb24 = pil.tobytes()
-                    payload = _lzo_compress(rgb24)
-                    compress_flag = 2
+                    rgba32 = pil.tobytes()  # w*h*4 bytes
+                    payload = _lzo_compress(rgba32)
+                    compress_flag = 1
+                    byte7 = 0x20  # 32 bits per pixel
                 else:  # rgb565 (default)
                     # RGB565 + LZO (lossless storage, C tool compatible)
                     w, h, rgb565 = _image_to_rgb565(pil)
                     payload = _lzo_compress(rgb565)
                     compress_flag = 1
+                    byte7 = 0x10  # 16 bits per pixel
 
                 # 16-byte info header
                 info = b'JXAG'
-                info += bytes([compress_flag, 0x00, 0x00, 0x10])
+                info += bytes([compress_flag, 0x00, 0x00, byte7])
                 info += struct.pack('<HH', w, h)
                 info += struct.pack('<I', len(payload))
 
@@ -211,7 +214,7 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                 if fmt == 'rgb565':
                     del rgb565
                 elif fmt == 'rgb24':
-                    del rgb24
+                    del rgba32
 
         # seek back and write address table
         f.seek(16)

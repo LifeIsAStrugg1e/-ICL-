@@ -67,19 +67,23 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                     pil.convert('RGB').save(buf, 'JPEG', quality=quality)
                     payload = buf.getvalue()
                     compress_flag = 0
+                    byte7 = 0x10
                 elif fmt == 'rgb24':
-                    pil = pil.convert('RGB')
+                    # RGBA32 + LZO (byte[7]=32, flag=1)
+                    pil = pil.convert('RGBA')
                     w, h = pil.size
-                    rgb24 = pil.tobytes()
-                    payload = lzo_compress(rgb24)
-                    compress_flag = 2
+                    rgba32 = pil.tobytes()  # w*h*4 bytes
+                    payload = lzo_compress(rgba32)
+                    compress_flag = 1
+                    byte7 = 0x20
                 else:  # rgb565
                     w, h, rgb565 = _pil_to_rgb565(pil)
                     payload = lzo_compress(rgb565)
                     compress_flag = 1
+                    byte7 = 0x10
 
                 info = b'JXAG'
-                info += bytes([compress_flag, 0x00, 0x00, 0x10])
+                info += bytes([compress_flag, 0x00, 0x00, byte7])
                 info += struct.pack('<HH', w, h)
                 info += struct.pack('<I', len(payload))
 
@@ -95,7 +99,7 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                 if fmt == 'rgb565':
                     del rgb565
                 elif fmt == 'rgb24':
-                    del rgb24
+                    del rgba32
 
         f.seek(16)
         for a in addrs:
