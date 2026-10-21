@@ -116,14 +116,10 @@ def _extract_jxag_image(data, addr, filesize, index):
             if n == out_size:
                 from PIL import Image
                 import numpy as np
-                # BGRA -> RGBA
+                # BGRA -> RGB (drop alpha, 24-bit BMP)
                 arr = np.frombuffer(outbuf.raw, dtype=np.uint8).reshape(h, w, 4)
-                rgba = np.empty_like(arr)
-                rgba[:, :, 0] = arr[:, :, 2]  # R
-                rgba[:, :, 1] = arr[:, :, 1]  # G
-                rgba[:, :, 2] = arr[:, :, 0]  # B
-                rgba[:, :, 3] = arr[:, :, 3]  # A
-                pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
+                rgb = arr[:, :, [2, 1, 0]]  # BGR -> RGB
+                pil = Image.frombytes('RGB', (w, h), rgb.tobytes())
                 import io as _io
                 buf = _io.BytesIO()
                 pil.save(buf, 'BMP')
@@ -163,14 +159,10 @@ def _extract_jxag_image(data, addr, filesize, index):
         if length == w * h * 4:
             from PIL import Image
             import numpy as np
-            # BGRA -> RGBA
+            # BGRA -> RGB (drop alpha, 24-bit BMP)
             arr = np.frombuffer(payload, dtype=np.uint8).reshape(h, w, 4)
-            rgba = np.empty_like(arr)
-            rgba[:, :, 0] = arr[:, :, 2]
-            rgba[:, :, 1] = arr[:, :, 1]
-            rgba[:, :, 2] = arr[:, :, 0]
-            rgba[:, :, 3] = arr[:, :, 3]
-            pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
+            rgb = arr[:, :, [2, 1, 0]]  # BGR -> RGB
+            pil = Image.frombytes('RGB', (w, h), rgb.tobytes())
             import io as _io
             buf = _io.BytesIO()
             pil.save(buf, 'BMP')

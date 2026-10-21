@@ -71,14 +71,10 @@ def _extract_image(data, addr, filesize, index):
         if byte7 == 0x20:  # BGRA32
             import numpy as np
             bgra = lzo_decompress(payload, w * h * 4)
-            # BGRA -> RGBA
+            # BGRA -> RGB (drop alpha, 24-bit BMP)
             arr = np.frombuffer(bgra, dtype=np.uint8).reshape(h, w, 4)
-            rgba = np.empty_like(arr)
-            rgba[:, :, 0] = arr[:, :, 2]
-            rgba[:, :, 1] = arr[:, :, 1]
-            rgba[:, :, 2] = arr[:, :, 0]
-            rgba[:, :, 3] = arr[:, :, 3]
-            pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
+            rgb = arr[:, :, [2, 1, 0]]  # BGR -> RGB
+            pil = Image.frombytes('RGB', (w, h), rgb.tobytes())
             buf = io.BytesIO()
             pil.save(buf, 'BMP')
             return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
@@ -112,12 +108,8 @@ def _extract_image(data, addr, filesize, index):
         if length == w * h * 4:
             import numpy as np
             arr = np.frombuffer(payload, dtype=np.uint8).reshape(h, w, 4)
-            rgba = np.empty_like(arr)
-            rgba[:, :, 0] = arr[:, :, 2]
-            rgba[:, :, 1] = arr[:, :, 1]
-            rgba[:, :, 2] = arr[:, :, 0]
-            rgba[:, :, 3] = arr[:, :, 3]
-            pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
+            rgb = arr[:, :, [2, 1, 0]]  # BGR -> RGB
+            pil = Image.frombytes('RGB', (w, h), rgb.tobytes())
             buf = io.BytesIO()
             pil.save(buf, 'BMP')
             return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
