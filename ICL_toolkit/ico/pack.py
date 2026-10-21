@@ -69,11 +69,20 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                     compress_flag = 2
                     byte7 = 0x20
                 elif fmt == 'rgb24':
-                    # RGBA32 + LZO (byte[7]=32, flag=1)
+                    # BGRA32 + LZO (byte[7]=32, flag=1)
+                    # 工具箱源码: push(B, G, R, A) → BGRA order
                     pil = pil.convert('RGBA')
                     w, h = pil.size
-                    rgba32 = pil.tobytes()  # w*h*4 bytes
-                    payload = lzo_compress(rgba32)
+                    rgba = pil.tobytes()
+                    # RGBA -> BGRA
+                    import numpy as np
+                    arr = np.frombuffer(rgba, dtype=np.uint8).reshape(h, w, 4)
+                    bgra = np.empty_like(arr)
+                    bgra[:, :, 0] = arr[:, :, 2]  # B
+                    bgra[:, :, 1] = arr[:, :, 1]  # G
+                    bgra[:, :, 2] = arr[:, :, 0]  # R
+                    bgra[:, :, 3] = arr[:, :, 3]  # A
+                    payload = lzo_compress(bgra.tobytes())
                     compress_flag = 1
                     byte7 = 0x20
                 else:  # rgb565
@@ -99,7 +108,7 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                 if fmt == 'rgb565':
                     del rgb565
                 elif fmt == 'rgb24':
-                    del rgba32
+                    del rgba, arr, bgra
 
         f.seek(16)
         for a in addrs:

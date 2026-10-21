@@ -68,9 +68,17 @@ def _extract_image(data, addr, filesize, index):
     if typ == 1:
         import io
         from PIL import Image
-        if byte7 == 0x20:  # RGBA32
-            rgba32 = lzo_decompress(payload, w * h * 4)
-            pil = Image.frombytes('RGBA', (w, h), rgba32)
+        if byte7 == 0x20:  # BGRA32
+            import numpy as np
+            bgra = lzo_decompress(payload, w * h * 4)
+            # BGRA -> RGBA
+            arr = np.frombuffer(bgra, dtype=np.uint8).reshape(h, w, 4)
+            rgba = np.empty_like(arr)
+            rgba[:, :, 0] = arr[:, :, 2]
+            rgba[:, :, 1] = arr[:, :, 1]
+            rgba[:, :, 2] = arr[:, :, 0]
+            rgba[:, :, 3] = arr[:, :, 3]
+            pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
             buf = io.BytesIO()
             pil.save(buf, 'BMP')
             return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),
@@ -100,9 +108,16 @@ def _extract_image(data, addr, filesize, index):
             bmp = rgb565_to_bmp(payload, w, h)
             return {'index': index, 'width': w, 'height': h, 'data': bmp,
                     'type': typ, 'fmt': 'JXAG_raw565'}
-        # uncompressed RGBA32
+        # uncompressed BGRA32
         if length == w * h * 4:
-            pil = Image.frombytes('RGBA', (w, h), payload)
+            import numpy as np
+            arr = np.frombuffer(payload, dtype=np.uint8).reshape(h, w, 4)
+            rgba = np.empty_like(arr)
+            rgba[:, :, 0] = arr[:, :, 2]
+            rgba[:, :, 1] = arr[:, :, 1]
+            rgba[:, :, 2] = arr[:, :, 0]
+            rgba[:, :, 3] = arr[:, :, 3]
+            pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
             buf = io.BytesIO()
             pil.save(buf, 'BMP')
             return {'index': index, 'width': w, 'height': h, 'data': buf.getvalue(),

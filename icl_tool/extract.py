@@ -109,13 +109,21 @@ def _extract_jxag_image(data, addr, filesize, index):
     # LZO compressed (flag=1)
     if typ == 1:
         dll = _load_lzo()
-        if byte7 == 0x20:  # 32 bits per pixel (RGBA32)
+        if byte7 == 0x20:  # 32 bits per pixel (BGRA)
             out_size = w * h * 4
             outbuf = ctypes.create_string_buffer(out_size)
             n = dll.lzo_decompress(payload, length, out_size, outbuf)
             if n == out_size:
                 from PIL import Image
-                pil = Image.frombytes('RGBA', (w, h), outbuf.raw)
+                import numpy as np
+                # BGRA -> RGBA
+                arr = np.frombuffer(outbuf.raw, dtype=np.uint8).reshape(h, w, 4)
+                rgba = np.empty_like(arr)
+                rgba[:, :, 0] = arr[:, :, 2]  # R
+                rgba[:, :, 1] = arr[:, :, 1]  # G
+                rgba[:, :, 2] = arr[:, :, 0]  # B
+                rgba[:, :, 3] = arr[:, :, 3]  # A
+                pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
                 import io as _io
                 buf = _io.BytesIO()
                 pil.save(buf, 'BMP')
@@ -151,10 +159,18 @@ def _extract_jxag_image(data, addr, filesize, index):
             bmp = _rgb565_to_bmp(payload, w, h)
             return {'index': index, 'width': w, 'height': h, 'data': bmp,
                     'type': typ, 'fmt': 'JXAG_raw565'}
-        # uncompressed RGBA32
+        # uncompressed BGRA32
         if length == w * h * 4:
             from PIL import Image
-            pil = Image.frombytes('RGBA', (w, h), payload)
+            import numpy as np
+            # BGRA -> RGBA
+            arr = np.frombuffer(payload, dtype=np.uint8).reshape(h, w, 4)
+            rgba = np.empty_like(arr)
+            rgba[:, :, 0] = arr[:, :, 2]
+            rgba[:, :, 1] = arr[:, :, 1]
+            rgba[:, :, 2] = arr[:, :, 0]
+            rgba[:, :, 3] = arr[:, :, 3]
+            pil = Image.frombytes('RGBA', (w, h), rgba.tobytes())
             import io as _io
             buf = _io.BytesIO()
             pil.save(buf, 'BMP')
