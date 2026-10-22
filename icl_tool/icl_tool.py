@@ -102,7 +102,7 @@ class App:
                             command=self._on_fmt_change).pack(anchor="w", pady=1, padx=16)
         self.frm_lossy_quality = ttk.Frame(self.frm_lossy)
         ttk.Label(self.frm_lossy_quality, text="压缩率:").pack(side="left")
-        self.scl_lossy_q = ttk.Scale(self.frm_lossy_quality, from_=10, to=100,
+        self.scl_lossy_q = ttk.Scale(self.frm_lossy_quality, from_=10, to=99,
                                      variable=self.lossy_quality, length=200)
         self.scl_lossy_q.pack(side="left", padx=4)
         self.lbl_lossy_q = ttk.Label(self.frm_lossy_quality, text="90")
@@ -193,7 +193,9 @@ class App:
             self.frm_rotate.pack(fill="x", padx=8, pady=2)
             self._on_fmt_change()
 
-        # 默认输出路径 = 第一个输入文件所在目录
+        # 默认输出路径 = 第一个输入文件所在目录（切换时清空一次再重算）
+        self.output_path.set("")
+        self._auto_out = ""
         self._update_default_output()
 
     def _update_default_output(self):
@@ -309,10 +311,24 @@ class App:
         self.root.after(0, _do)
 
     def _status(self, msg):
-        self.root.after(0, lambda: self.lbl_status.config(text=msg))
+        def _do():
+            self.lbl_status.config(text=msg)
+            if hasattr(self, "dlg_status") and self.dlg_status is not None:
+                try:
+                    self.dlg_status.config(text=msg)
+                except Exception:
+                    pass
+        self.root.after(0, _do)
 
     def _progress(self, value):
-        self.root.after(0, lambda: self.prg.configure(value=value))
+        def _do():
+            self.prg.configure(value=value)
+            if hasattr(self, "dlg_prg") and self.dlg_prg is not None:
+                try:
+                    self.dlg_prg.configure(value=value)
+                except Exception:
+                    pass
+        self.root.after(0, _do)
 
     # ---- run ----
 
@@ -336,8 +352,43 @@ class App:
         self.btn_start.config(state="disabled")
         self.prg["value"] = 0
         self._log("=" * 50)
+        self._show_progress_dialog(mode)
 
         threading.Thread(target=self._worker, args=(out, mode), daemon=True).start()
+
+    def _show_progress_dialog(self, mode):
+        """弹出模态转换中窗口，防止误操作"""
+        title_map = {"extract": "正在解压...", "pack": "正在打包...", "img2ico": "正在转换..."}
+        dlg = tk.Toplevel(self.root)
+        dlg.title(title_map.get(mode, "正在处理..."))
+        dlg.transient(self.root)
+        dlg.resizable(False, False)
+        dlg.geometry("400x110+{}+{}".format(
+            self.root.winfo_rootx() + 100,
+            self.root.winfo_rooty() + 150))
+
+        ttk.Label(dlg, text=title_map.get(mode, "正在处理..."),
+                  font=("", 11, "bold")).pack(pady=(14, 6))
+        self.dlg_prg = ttk.Progressbar(dlg, length=360, mode="determinate")
+        self.dlg_prg.pack(padx=20, pady=2)
+        self.dlg_status = ttk.Label(dlg, text="准备中...")
+        self.dlg_status.pack(pady=4)
+
+        # 禁止关闭，阻塞主窗口交互
+        dlg.protocol("WM_DELETE_WINDOW", lambda: None)
+        dlg.grab_set()
+
+    def _close_progress_dialog(self):
+        def _do():
+            try:
+                if hasattr(self, "dlg_prg") and self.dlg_prg.winfo_exists():
+                    self.dlg_prg.master.grab_release()
+                    self.dlg_prg.master.destroy()
+            except Exception:
+                pass
+            self.dlg_prg = None
+            self.dlg_status = None
+        self.root.after(0, _do)
 
     def _worker(self, out, mode):
         """Background thread worker: dispatch to mode handler."""
@@ -354,6 +405,7 @@ class App:
             self._log(f"错误: {e}")
         finally:
             self.running = False
+            self._close_progress_dialog()
             self.root.after(0, lambda: self.btn_start.config(state="normal"))
 
     def _do_extract(self, out_dir):

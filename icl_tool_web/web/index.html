@@ -204,6 +204,32 @@
   /* 隐藏区域 */
   .hidden { display: none !important; }
 
+  /* 转换中模态弹窗 */
+  .modal-mask {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+  }
+  .modal-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 30px;
+    width: 380px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+  .modal-progress-wrap {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .modal-status { font-size: 12px; color: var(--text2); }
+
   /* 预览 */
   .preview-row { display: flex; align-items: center; gap: 10px; }
   .pv-box { flex: 1; }
@@ -285,7 +311,7 @@
       </div>
       <div class="slider-row hidden" id="qualityRow">
         <span class="opt-label" style="margin:0">压缩率</span>
-        <input type="range" min="10" max="100" value="90" id="qualitySlider"
+        <input type="range" min="10" max="99" value="90" id="qualitySlider"
                oninput="document.getElementById('qualityVal').textContent=this.value">
         <span class="slider-val" id="qualityVal">90</span>
       </div>
@@ -349,6 +375,17 @@
   <div id="logArea"></div>
 </div>
 
+<!-- 转换中模态弹窗 -->
+<div class="modal-mask hidden" id="busyModal">
+  <div class="modal-box">
+    <div class="modal-title" id="busyTitle">正在转换...</div>
+    <div class="modal-progress-wrap">
+      <div class="progress-bar" id="modalProgressBar"></div>
+    </div>
+    <div class="modal-status" id="modalStatus">准备中...</div>
+  </div>
+</div>
+
 <script>
 // ===== 状态 =====
 let currentMode = 'extract';
@@ -389,7 +426,9 @@ function setMode(mode) {
   previewIndex = 0;
   if (mode !== 'extract') refreshPreviewCount();
 
-  // 输出路径随模式重算
+  // 输出路径随模式重算（切换时清空一次）
+  document.getElementById('outPath').value = '';
+  autoOut = '';
   updateDefaultOutput();
 }
 
@@ -513,6 +552,14 @@ async function startTask() {
   isRunning = true;
   document.getElementById('btnStart').disabled = true;
   document.getElementById('logArea').innerHTML = '';
+
+  // 显示转换中模态弹窗（阻止误操作）
+  const titleMap = {extract: '正在解压...', pack: '正在打包...', img2ico: '正在转换...'};
+  document.getElementById('busyTitle').textContent = titleMap[mode] || '正在处理...';
+  document.getElementById('modalProgressBar').style.width = '0%';
+  document.getElementById('modalStatus').textContent = '准备中...';
+  document.getElementById('busyModal').classList.remove('hidden');
+
   startPoll();
 }
 
@@ -523,6 +570,8 @@ function startPoll() {
     const st = await pywebview.api.get_state();
     document.getElementById('progressBar').style.width = st.progress + '%';
     document.getElementById('statusText').textContent = st.status;
+    document.getElementById('modalProgressBar').style.width = st.progress + '%';
+    document.getElementById('modalStatus').textContent = st.status;
 
     if (st.logs && st.logs.length) {
       const el = document.getElementById('logArea');
@@ -535,6 +584,7 @@ function startPoll() {
       pollTimer = null;
       isRunning = false;
       document.getElementById('btnStart').disabled = false;
+      document.getElementById('busyModal').classList.add('hidden');
     }
   }, 400);
 }
