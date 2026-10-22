@@ -190,7 +190,7 @@ def detect_format(data):
     return None
 
 
-def extract_file(path, out_dir, fmt_out='bmp', quality=95):
+def extract_file(path, out_dir, fmt_out='bmp', quality=95, progress_cb=None):
     """Extract images from ICL or ICO file.
 
     Args:
@@ -200,6 +200,8 @@ def extract_file(path, out_dir, fmt_out='bmp', quality=95):
                  'jpg'  = re-encode as JPG (quality 10-100)
                  'png'  = convert to PNG (lossless)
         quality: JPG quality (only used when fmt_out='jpg')
+        progress_cb: optional callback(done, total, filename) called
+                     after each image is saved
 
     Returns: (count, format_detected) where format is 'icl' or 'ico'
     """
@@ -223,6 +225,7 @@ def extract_file(path, out_dir, fmt_out='bmp', quality=95):
     os.makedirs(out_dir, exist_ok=True)
     saved = 0
     seq = 0
+    total_count = len(images)
 
     from PIL import Image
 
@@ -260,6 +263,12 @@ def extract_file(path, out_dir, fmt_out='bmp', quality=95):
             pil.save(outfile, 'BMP')
         saved += 1
         seq += 1
+
+        if progress_cb:
+            try:
+                progress_cb(saved, total_count, os.path.basename(outfile))
+            except Exception:
+                pass
 
     return saved, file_fmt
 

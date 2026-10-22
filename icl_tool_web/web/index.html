@@ -203,6 +203,26 @@
 
   /* 隐藏区域 */
   .hidden { display: none !important; }
+
+  /* 预览 */
+  .preview-row { display: flex; align-items: center; gap: 10px; }
+  .pv-box { flex: 1; }
+  .pv-label { font-size: 11px; color: var(--text2); text-align: center; margin-bottom: 4px; }
+  .pv-img-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .pv-img-wrap img { max-width: 100%; max-height: 100%; }
+  .pv-arrow { font-size: 20px; color: var(--accent2); padding-top: 16px; }
+  .pv-nav { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .pv-info { font-size: 12px; color: var(--accent2); min-width: 80px; text-align: center; }
+  .pv-hint { font-size: 11px; color: var(--text2); margin-left: auto; }
 </style>
 </head>
 <body>
@@ -282,6 +302,28 @@
   </div>
 </div>
 
+<!-- 预览 (打包/图片压缩) -->
+<div class="card hidden" id="previewCard">
+  <div class="card-title">预览对比（旋转 / 压缩效果）</div>
+  <div class="preview-row">
+    <div class="pv-box">
+      <div class="pv-label">原图</div>
+      <div class="pv-img-wrap"><img id="pvOrigin" alt="原图"></div>
+    </div>
+    <div class="pv-arrow">→</div>
+    <div class="pv-box">
+      <div class="pv-label">效果图</div>
+      <div class="pv-img-wrap"><img id="pvPreview" alt="效果图"></div>
+    </div>
+  </div>
+  <div class="pv-nav">
+    <button class="btn btn-secondary" onclick="previewMove(-1)">◀ 上一张</button>
+    <span id="pvInfo" class="pv-info">-</span>
+    <button class="btn btn-secondary" onclick="previewMove(1)">下一张 ▶</button>
+    <span class="pv-hint" id="pvHint"></span>
+  </div>
+</div>
+
 <!-- 输出路径 -->
 <div class="card">
   <div class="card-title">输出路径</div>
@@ -314,6 +356,9 @@ let files = [];          // [{path, name}]
 let selectedIndex = -1;
 let isRunning = false;
 let pollTimer = null;
+let previewIndex = 0;
+let previewTotal = 0;
+let previewTimer = null;
 
 // ===== pywebview 就绪 =====
 function ready(fn) {
@@ -337,6 +382,11 @@ function setMode(mode) {
   const isImg2ico = (mode === 'img2ico');
   document.getElementById('btnAddFile').style.display = isImg2ico ? 'none' : '';
   document.getElementById('btnAddFolder').style.display = isImg2ico ? '' : 'none';
+
+  // 预览卡片: 打包/图片压缩显示
+  document.getElementById('previewCard').classList.toggle('hidden', mode === 'extract');
+  previewIndex = 0;
+  if (mode !== 'extract') refreshPreviewCount();
 
   // 清空输出路径
   document.getElementById('outPath').value = '';
@@ -403,12 +453,13 @@ function renderFiles() {
   const el = document.getElementById('fileList');
   if (!files.length) {
     el.innerHTML = '<div class="empty">暂无文件，请添加</div>';
-    return;
+  } else {
+    el.innerHTML = files.map((f, i) =>
+      `<div class="fitem ${i === selectedIndex ? 'sel' : ''}" onclick="selectFile(${i})">
+         <span>${f.name}</span>
+       </div>`).join('');
   }
-  el.innerHTML = files.map((f, i) =>
-    `<div class="fitem ${i === selectedIndex ? 'sel' : ''}" onclick="selectFile(${i})">
-       <span>${f.name}</span>
-     </div>`).join('');
+  if (currentMode !== 'extract') refreshPreviewCount();
 }
 
 function selectFile(i) {
@@ -486,6 +537,72 @@ function startPoll() {
     }
   }, 400);
 }
+
+// ===== 预览 =====
+async function refreshPreviewCount() {
+  if (!files.length) {
+    previewTotal = 0;
+    document.getElementById('pvInfo').textContent = '无文件';
+    document.getElementById('pvOrigin').removeAttribute('src');
+    document.getElementById('pvPreview').removeAttribute('src');
+    return;
+  }
+  // 打包模式: 只取第一份文件的前3张; 图片压缩: 全部文件
+  if (currentMode === 'pack') {
+    const n = await pywebview.api.get_preview_count(files[0].path);
+    previewTotal = Math.min(3, n);
+  } else {
+    previewTotal = files.length;
+  }
+  if (previewIndex >= previewTotal) previewIndex = 0;
+  refreshPreview();
+}
+
+async function refreshPreview() {
+  if (!files.length || previewTotal === 0) return;
+  const fmt = document.querySelector('input[name=compFmt]:checked').value;
+  const rot = parseInt(document.querySelector('input[name=rot]:checked').value);
+  const q = parseInt(document.getElementById('qualitySlider').value);
+
+  let res;
+  if (currentMode === 'pack') {
+    res = await pywebview.api.get_preview(files[0].path, previewIndex, fmt, rot, q);
+  } else {
+    res = await pywebview.api.get_preview(files[previewIndex].path, 0, fmt, rot, q);
+  }
+
+  if (res.ok) {
+    document.getElementById('pvOrigin').src = res.origin;
+    document.getElementById('pvPreview').src = res.preview;
+    document.getElementById('pvInfo').textContent =
+      '第 ' + (previewIndex + 1) + ' / ' + previewTotal + ' 张';
+    const rotTxt = rot ? rot + '°' : '不旋转';
+    const fmtTxt = {rgb565: 'RGB565', rgb24: 'RGB24', jpg: 'JPG q=' + q}[fmt];
+    document.getElementById('pvHint').textContent = fmtTxt + ' · ' + rotTxt;
+  } else {
+    document.getElementById('pvInfo').textContent = res.message || '预览失败';
+  }
+}
+
+function previewMove(delta) {
+  if (previewTotal === 0) return;
+  previewIndex = (previewIndex + delta + previewTotal) % previewTotal;
+  refreshPreview();
+}
+
+// 旋转/格式/质量变化时防抖刷新预览
+function schedulePreviewRefresh() {
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    if (currentMode !== 'extract') refreshPreview();
+  }, 180);
+}
+
+document.querySelectorAll('input[name=rot]').forEach(r =>
+  r.addEventListener('change', schedulePreviewRefresh));
+document.querySelectorAll('input[name=compFmt]').forEach(r =>
+  r.addEventListener('change', schedulePreviewRefresh));
+document.getElementById('qualitySlider').addEventListener('input', schedulePreviewRefresh);
 
 // ===== 回调（可选，轮询为主） =====
 window.__onLog = function(msg) {};

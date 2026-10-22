@@ -230,16 +230,22 @@ class Api:
             self._log("[%d/%d] %s" % (fi + 1, total, os.path.basename(path)))
 
             sub_dir = os.path.join(out_dir, base) if total > 1 else out_dir
+
+            def _cb(done, total_img, fname, _fi=fi, _total=total):
+                self._log("    提取 %d/%d -> %s" % (done, total_img, fname))
+                base_pct = _fi / _total * 100
+                pct = base_pct + (done / float(total_img or 1)) / _total * 100
+                self._progress(pct)
+                self._status("%d%%" % int(pct))
+
             try:
                 count, file_fmt = extract_file(path, sub_dir,
-                                               fmt_out=fmt, quality=quality)
+                                               fmt_out=fmt, quality=quality,
+                                               progress_cb=_cb)
                 self._log("  [%s] 提取 %d 张 -> %s" % (file_fmt, count, sub_dir))
                 total_images += count
             except Exception as e:
                 self._log("  错误: %s" % e)
-
-            self._progress((fi + 1) / total * 100)
-            self._status("%d%%" % int((fi + 1) / total * 100))
 
         self._log("完成，共 %d 张图片" % total_images)
 
@@ -314,6 +320,127 @@ class Api:
                 img['jpg'] = img.pop('data')
             return images
         return []
+
+    # ---- 预览 ----
+
+    def get_preview(self, path, index, fmt, rotation, quality):
+        """获取单张图的 原图/效果图 预览 (base64)
+
+        Args:
+            path:     输入文件路径 (ICL/ICO 或图片文件)
+            index:    第几张图 (图片压缩模式 = 文件在列表中的序号对应)
+            fmt:      rgb565 / rgb24 / jpg
+            rotation: 0/90/180/270
+            quality:  JPG 质量 10-100
+
+        Returns:
+            {ok, origin, preview}  均为 data:image/jpeg;base64,...
+        """
+        try:
+            from PIL import Image
+            import io
+            import base64
+
+            pil = self._load_preview_source(path, index)
+            if pil is None:
+                return {"ok": False, "message": "无法加载图片"}
+
+            origin = self._pil_to_data_url(pil, max_w=256)
+
+            # 应用变换: 旋转 → 格式效果
+            work = pil.copy()
+            if int(rotation) in (90, 180, 270):
+                work = work.rotate(-int(rotation), expand=True)
+            work = self._simulate_fmt(work, fmt, int(quality))
+
+            preview = self._pil_to_data_url(work, max_w=256)
+            return {"ok": True, "origin": origin, "preview": preview}
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    def get_preview_count(self, path):
+        """返回输入文件的图片数量 (预览翻页用)"""
+        try:
+            ext = os.path.splitext(path)[1].lower()
+            if ext in ('.jpg', '.jpeg', '.png', '.bmp'):
+                return 1
+            return len(self._load_images(path))
+        except Exception:
+            return 0
+
+    def _load_preview_source(self, path, index):
+        """加载预览源图 -> PIL Image"""
+        from PIL import Image
+        import io
+
+        ext = os.path.splitext(path)[1].lower()
+        if ext in ('.jpg', '.jpeg', '.png', '.bmp'):
+            pil = Image.open(path)
+            pil.load()
+            return pil
+
+        images = self._load_images(path)
+        if index >= len(images):
+            return None
+        raw = images[index].get('jpg') or images[index].get('data')
+        if raw[:2] == b'\xff\xd8':
+            result = decode_jpg(raw)
+            if result is None:
+                return None
+            w, h, rgb = result
+            return Image.frombytes('RGB', (w, h), rgb)
+        elif raw[:2] == b'BM' or raw[:8] == b'\x89PNG\r\n\x1a\n':
+            pil = Image.open(io.BytesIO(raw))
+            pil.load()
+            return pil
+        return None
+
+    def _simulate_fmt(self, pil, fmt, quality):
+        """模拟压缩格式的视觉效果 (旋转已应用)"""
+        import io
+        from PIL import Image
+
+        if fmt == 'jpg':
+            buf = io.BytesIO()
+            pil.convert('RGB').save(buf, 'JPEG', quality=quality)
+            buf.seek(0)
+            out = Image.open(buf)
+            out.load()
+            return out
+        elif fmt == 'rgb565':
+            # 模拟 16bit 量化损失
+            import numpy as np
+            pil = pil.convert('RGB')
+            arr = np.frombuffer(pil.tobytes(), dtype=np.uint8).reshape(
+                pil.size[1], pil.size[0], 3)
+            r = (arr[:, :, 0] >> 3).astype(np.uint16)
+            g = (arr[:, :, 1] >> 2).astype(np.uint16)
+            b = (arr[:, :, 2] >> 3).astype(np.uint16)
+            v565 = (r << 11) | (g << 5) | b
+            r8 = ((v565 >> 11) & 0x1F) << 3
+            g8 = ((v565 >> 5) & 0x3F) << 2
+            b8 = (v565 & 0x1F) << 3
+            out = np.stack([r8, g8, b8], axis=-1).astype(np.uint8)
+            return Image.frombytes('RGB', pil.size, out.tobytes())
+        # rgb24(BGRA无损) 与原图一致
+        return pil
+
+    def _pil_to_data_url(self, pil, max_w=256):
+        """PIL → 缩放到 max_w 宽的 jpeg data URL"""
+        import io
+        import base64
+        from PIL import Image
+
+        pil = pil.convert('RGB')
+        w, h = pil.size
+        if w > max_w:
+            nh = int(h * max_w / w)
+            resample = getattr(Image, 'LANCZOS', Image.BILINEAR)
+            pil = pil.resize((max_w, nh), resample)
+        buf = io.BytesIO()
+        pil.save(buf, 'JPEG', quality=85)
+        b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        return "data:image/jpeg;base64," + b64
 
 
 def msg_json(s):

@@ -350,8 +350,18 @@ class App:
             self._log(f"[{fi+1}/{total}] {os.path.basename(path)}")
 
             sub_dir = os.path.join(out_dir, base) if total > 1 else out_dir
+
+            def _cb(done, total_img, fname, _fi=fi, _total=total):
+                self._log("    提取 %d/%d 张 -> %s" % (done, total_img, fname))
+                # 文件级进度按当前文件所占比例推进
+                base_pct = _fi / _total * 100
+                pct = base_pct + (done / total_img) / _total * 100 if total_img else base_pct
+                self._progress(pct)
+                self._status("%d%%" % int(pct))
+
             try:
-                count, file_fmt = extract_file(path, sub_dir, fmt_out=fmt, quality=quality)
+                count, file_fmt = extract_file(path, sub_dir, fmt_out=fmt,
+                                                quality=quality, progress_cb=_cb)
                 self._log(f"  [{file_fmt}] 提取 {count} 张 -> {sub_dir}")
                 total_images += count
             except Exception as e:
