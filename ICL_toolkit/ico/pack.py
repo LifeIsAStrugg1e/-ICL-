@@ -15,7 +15,7 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
         fmt:       'rgb565' = 16-bit LZO (flag=1, byte[7]=0x10, C工具兼容)
                    'rgb24'  = BGRA32 LZO 无损 (flag=1, byte[7]=0x20, 不兼容C工具)
                    'jpg'    = JPG payload (flag=2, byte[7]=0x20, C工具兼容)
-        quality:   JPG 压缩率 10-100 (仅 fmt='jpg', 默认 90)
+        quality:   JPG 压缩率 10-99 (仅 fmt='jpg', 默认 90, 超出范围自动截断)
         batch_size: 每批处理的图片数（控制内存峰值, 默认 20）
         rotation:  0/90/180/270 度，压缩前顺时针旋转
 
@@ -29,6 +29,7 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
         raise ValueError("no images to pack")
     if fmt not in ('rgb565', 'rgb24', 'jpg'):
         raise ValueError("fmt must be 'rgb565', 'rgb24', or 'jpg'")
+    quality = max(10, min(99, int(quality)))
 
     sorted_images = sorted(images, key=lambda x: x['index'])
     count = len(sorted_images)

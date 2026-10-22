@@ -16,14 +16,14 @@
     # 打包（懒加载，内存友好）
     pack_ico([{'index': 0, 'path': 'a.bmp'}], "output.ico")
 
-    # 有损压缩
-    pack_ico(images, "output.ico", lossy=True, quality=85)
+    # 有损压缩（fmt='jpg'，quality 控制压缩率 10-99）
+    pack_ico(images, "output.ico", fmt='jpg', quality=85)
 
     # ICL 转 ICO
     icl_to_ico("input.icl", "output.ico")
 
     # 图片转 ICO
-    images_to_ico(["a.jpg", "b.png"], "output.ico", lossy=True, quality=75)
+    images_to_ico(["a.jpg", "b.png"], "output.ico", fmt='jpg', quality=75)
 """
 
 __version__ = '1.0.0'

@@ -14,10 +14,11 @@ def detect(data):
     return None
 
 
-def extract(path, out_dir, fmt='raw', quality=95):
+def extract(path, out_dir, fmt='raw', quality=95, progress_cb=None):
     """从 ICL/ICO 提取图片
 
     fmt: 'raw'（保留原始格式）| 'jpg' | 'bmp' | 'png'
+    progress_cb: 可选回调 (done, total, filename)，每张保存后调用
     返回 (count, format_detected)
     """
     with open(path, 'rb') as f:
@@ -40,6 +41,7 @@ def extract(path, out_dir, fmt='raw', quality=95):
     os.makedirs(out_dir, exist_ok=True)
     saved = 0
     seq = 0
+    total_count = len(images)
 
     from PIL import Image
 
@@ -60,6 +62,11 @@ def extract(path, out_dir, fmt='raw', quality=95):
                 f.write(raw)
             saved += 1
             seq += 1
+            if progress_cb:
+                try:
+                    progress_cb(saved, total_count, os.path.basename(outfile))
+                except Exception:
+                    pass
         else:
             # decode then re-encode
             import io
@@ -86,5 +93,10 @@ def extract(path, out_dir, fmt='raw', quality=95):
                 pil.save(outfile)
             saved += 1
             seq += 1
+            if progress_cb:
+                try:
+                    progress_cb(saved, total_count, os.path.basename(outfile))
+                except Exception:
+                    pass
 
     return saved, file_fmt

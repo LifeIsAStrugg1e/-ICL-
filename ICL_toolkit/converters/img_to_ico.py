@@ -12,7 +12,7 @@ def images_to_ico(image_paths, out_path, fmt='rgb565', quality=90,
 
     image_paths: 图片路径列表（jpg/png/bmp）
     fmt: 'rgb565'/'rgb24'/'jpg'
-    quality: JPG压缩率 (10-100)
+    quality: JPG压缩率 (10-99)
     batch_size: 每批处理图片数
     rotation: 0/90/180/270 度，顺时针旋转
     返回打包数量

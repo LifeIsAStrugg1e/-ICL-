@@ -19,8 +19,8 @@ count, fmt = extract("file.icl", "output_dir", fmt="bmp")
 # 打包 BMP -> JXAG ICO（懒加载，逐批读取）
 pack_ico([{'index': 0, 'path': 'a.bmp'}], "output.ico")
 
-# 有损压缩（JPG 编码，quality 控制压缩率）
-pack_ico(images, "output.ico", lossy=True, quality=85)
+# 有损压缩（fmt='jpg'，quality 控制压缩率 10-99）
+pack_ico(images, "output.ico", fmt='jpg', quality=85)
 
 # ICL -> ICO 一步转换
 icl_to_ico("input.icl", "output.ico")
@@ -33,11 +33,11 @@ images_to_ico(["a.jpg", "b.png", "c.bmp"], "output.ico")
 
 | 函数 | 说明 |
 |------|------|
-| `extract(path, out_dir, fmt)` | 解压 ICL/ICO，fmt: raw/jpg/bmp/png |
-| `pack_ico(images, out_path, lossy, quality, batch_size)` | 打包 JXAG ICO |
-| `icl_to_ico(icl_path, ico_path)` | ICL 转 ICO |
-| `images_to_ico(paths, out_path)` | 图片文件转 ICO |
-| `folder_to_ico(folder, out_path)` | 文件夹内图片转 ICO |
+| `extract(path, out_dir, fmt, quality, progress_cb)` | 解压 ICL/ICO，fmt: raw/jpg/bmp/png |
+| `pack_ico(images, out_path, fmt, quality, batch_size, rotation)` | 打包 JXAG ICO |
+| `icl_to_ico(icl_path, ico_path, fmt, quality, rotation)` | ICL 转 ICO |
+| `images_to_ico(paths, out_path, fmt, quality, rotation)` | 图片文件转 ICO |
+| `folder_to_ico(folder, out_path, fmt, quality, rotation)` | 文件夹内图片转 ICO |
 | `detect(data)` | 检测格式: 'icl'/'ico'/None |
 | `parse_icl(data)` | 解析 ICL 文件 |
 | `extract_ico(data)` | 解压 ICO 数据 |
@@ -51,9 +51,20 @@ images_to_ico(["a.jpg", "b.png", "c.bmp"], "output.ico")
 |------|------|------|
 | `images` | - | `[{'index': i, 'path': 'a.bmp'}]` 或 `[{'index': i, 'data': bytes}]` |
 | `out_path` | - | 输出 ICO 路径 |
-| `lossy` | `False` | False=LZO RGB565 无损, True=JPG 有损 |
-| `quality` | `85` | JPG 压缩率 (10-100)，仅 lossy=True 时生效 |
+| `fmt` | `'rgb565'` | `rgb565`=16位LZO无损(C工具兼容) / `rgb24`=BGRA32无损 / `jpg`=JPG有损 |
+| `quality` | `90` | JPG 压缩率 10-99（自动截断），仅 fmt='jpg' 时生效 |
 | `batch_size` | `20` | 每批处理图片数，控制内存峰值 |
+| `rotation` | `0` | 压缩前顺时针旋转 0/90/180/270 度 |
+
+### extract 参数
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `path` | - | 输入 .icl/.ico 路径 |
+| `out_dir` | - | 输出目录（自动创建） |
+| `fmt` | `'raw'` | `raw`=保留原始格式 / `jpg` / `bmp` / `png` |
+| `quality` | `95` | JPG 重编码质量（仅 fmt='jpg'） |
+| `progress_cb` | `None` | 回调 `(done, total, filename)`，每张保存后调用 |
 
 ## 目录结构
 
