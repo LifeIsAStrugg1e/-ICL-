@@ -95,6 +95,36 @@ class Api:
             root.destroy()
         return list(paths)
 
+    def select_folder(self):
+        """打开文件夹选择对话框，返回文件夹路径"""
+        from tkinter import Tk, filedialog
+        root = Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        try:
+            p = filedialog.askdirectory(title="选择文件夹")
+        finally:
+            root.destroy()
+        return p or ""
+
+    def list_files(self, folder, exts):
+        """列出文件夹中匹配扩展名的文件
+
+        Args:
+            folder: 文件夹路径
+            exts: 扩展名列表 ['.icl', '.ico']
+        Returns: 完整路径列表
+        """
+        try:
+            exts = [e.lower() for e in exts]
+            out = []
+            for name in sorted(os.listdir(folder)):
+                if name.lower().endswith(tuple(exts)):
+                    out.append(os.path.join(folder, name))
+            return out
+        except Exception:
+            return []
+
     def select_output(self, mode):
         """打开输出路径选择
 

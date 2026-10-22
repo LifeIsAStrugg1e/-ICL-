@@ -333,9 +333,9 @@ function setMode(mode) {
   document.getElementById('packOpts').classList.toggle('hidden', isExtract);
   document.getElementById('outLabel').textContent = isExtract ? '输出文件夹' : '输出 ICO 文件';
 
-  // 按钮显示
-  document.getElementById('btnAddFile').style.display = (mode === 'img2ico') ? 'none' : '';
-  document.getElementById('btnAddFolder').style.display = (mode === 'img2ico') ? 'none' : '';
+  // 按钮显示: 添加文件常显; 添加文件夹仅图片压缩显示
+  document.getElementById('btnAddFile').style.display = '';
+  document.getElementById('btnAddFolder').style.display = (mode === 'img2ico') ? '' : 'none';
 
   // 清空输出路径
   document.getElementById('outPath').value = '';
@@ -367,9 +367,12 @@ async function addFiles() {
 }
 
 async function addFolder() {
-  // 文件夹添加通过 select_files 不便，简化为提示使用添加文件
-  // 实际可用 pywebview.api 中扩展
-  const paths = await pywebview.api.select_files(currentMode);
+  const folder = await pywebview.api.select_folder();
+  if (!folder) return;
+  const exts = (currentMode === 'img2ico')
+    ? ['.jpg', '.jpeg', '.png', '.bmp']
+    : ['.icl', '.ico'];
+  const paths = await pywebview.api.list_files(folder, exts);
   if (!paths || !paths.length) return;
   for (const p of paths) {
     if (!files.find(f => f.path === p)) {
