@@ -193,7 +193,9 @@ class App:
             self.frm_rotate.pack(fill="x", padx=8, pady=2)
             self._on_fmt_change()
 
-        # 默认输出路径 = 第一个输入文件所在目录（切换时清空一次再重算）
+        # 切换功能：清空输入文件 + 输出路径重算
+        self.lst_files.delete(0, "end")
+        self.input_paths.clear()
         self.output_path.set("")
         self._auto_out = ""
         self._update_default_output()
