@@ -76,9 +76,9 @@ def main():
         "ICL/ICO 图片工具",
         html_path,
         js_api=api,
-        width=760,
-        height=880,
-        min_size=(680, 720),
+        width=650,
+        height=750,
+        min_size=(600, 650),
         resizable=True,
         text_select=True,
     )
