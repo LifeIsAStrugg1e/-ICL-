@@ -37,6 +37,13 @@ class App:
     def _build_ui(self):
         pad = {'padx': 8, 'pady': 4}
 
+        # 红色按钮样式
+        style = ttk.Style()
+        style.configure("Danger.TButton", background="#c0392b", foreground="white")
+        style.map("Danger.TButton",
+                  background=[("active", "#e74c3c"), ("disabled", "#95a5a6")],
+                  foreground=[("disabled", "#ecf0f1")])
+
         # ===== mode =====
         frm_mode = ttk.LabelFrame(self.root, text="操作模式")
         frm_mode.pack(fill="x", **pad)
@@ -63,8 +70,10 @@ class App:
         self.btn_add_file.pack(fill="x", pady=2)
         self.btn_add_folder = ttk.Button(frm_btn, text="添加文件夹", command=self.add_folder)
         self.btn_add_folder.pack(fill="x", pady=2)
-        ttk.Button(frm_btn, text="移除选中", command=self.remove_selected).pack(fill="x", pady=2)
-        ttk.Button(frm_btn, text="清空", command=self.clear_files).pack(fill="x", pady=2)
+        ttk.Button(frm_btn, text="移除选中", style="Danger.TButton",
+                   command=self.remove_selected).pack(fill="x", pady=2)
+        ttk.Button(frm_btn, text="清空", style="Danger.TButton",
+                   command=self.clear_files).pack(fill="x", pady=2)
 
         # ===== output format =====
         frm_fmt = ttk.LabelFrame(self.root, text="输出格式")
