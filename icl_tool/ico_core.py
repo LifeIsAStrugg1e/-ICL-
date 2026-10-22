@@ -111,20 +111,27 @@ def _lzo_compress(data):
 def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation=0):
     """Pack images into JXAG ICO file.
 
-    images: list of dicts. Each dict must have 'index' and one of:
-            'path' (file path, loaded lazily per batch) OR
-            'jpg'/'bmp'/'data' (raw bytes, loaded eagerly)
-    fmt:    'rgb565' = 16-bit LZO (C tool compatible, flag=1)
-            'rgb24'  = 24-bit LZO lossless (flag=2, NOT C tool compatible)
-            'jpg'    = 24-bit JPG lossy (C tool compatible, flag=0)
-    quality: JPG quality 10-100 (only used when fmt='jpg')
-    batch_size: number of images to process in memory at once (default 20)
-    rotation: 0/90/180/270 degrees, applied before compression (clockwise)
+    Args:
+        images:    list of dicts. Each must have 'index' and one of:
+                   'path' (lazy-loaded per batch) OR 'jpg'/'bmp'/'data' (raw bytes)
+        out_path:  output ICO file path
+        fmt:       'rgb565' = 16-bit LZO (flag=1, byte[7]=0x10, C tool compatible)
+                   'rgb24'  = BGRA32 LZO lossless (flag=1, byte[7]=0x20, NOT C tool compatible)
+                   'jpg'    = JPG payload (flag=2, byte[7]=0x20, C tool compatible)
+        quality:   JPG quality 10-100 (only used when fmt='jpg', default 90)
+        batch_size: images processed in memory at once (default 20, for memory optimization)
+        rotation:  0/90/180/270 degrees clockwise, applied before compression
 
-    Format matches C tool ico_recovery_picture JXAG path:
-      - 16-byte header: "JXAG" + ... + count at 0x0C (LE)
-      - address table at 0x10, 4 bytes each LE
-      - per-image: 16-byte info header starting with "JXAG" + payload
+    Returns: number of images packed
+
+    JXAG format (only format supported by C tool):
+      - 16-byte header: "JXAG" + version + checksum + count@0x0C(LE)
+      - address table @0x10, 4 bytes each LE
+      - per-image: 16-byte info header + payload, padded to 16 bytes
+
+    Pixel format reference (download.js source):
+      - rgb565: little-endian RGB565, top-down row order
+      - rgb24:  BGRA order (B,G,R,A), matching tool's fillPixel()
     """
     if not images:
         raise ValueError("no images to pack")

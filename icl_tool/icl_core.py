@@ -1,3 +1,14 @@
+"""ICL file parser and JPG decoder.
+
+ICL format (GUS_3):
+  - Magic: GUS_3 at offset 0x01 (data[0] is checked but value varies)
+  - Byte 0x0C: must be 0x04
+  - Bytes 0x0D-0x0E: image count (big-endian uint16)
+  - Bytes 0x10+: address table, 4 bytes each (big-endian), pointing to image headers
+  - Image header (10 bytes): width(2) + height(2) + len_low(2) + len_high(4)
+  - Image data: embedded non-standard JPG, requires tjpgd.dll to decode
+"""
+
 import ctypes
 import os
 import struct
@@ -22,6 +33,7 @@ def _load_dll():
 
 
 def is_icl(data):
+    """Check if data is a valid ICL file (GUS_3 magic)."""
     if len(data) < 16:
         return False
     return (data[1] == ord('G') and data[2] == ord('U') and
@@ -30,6 +42,7 @@ def is_icl(data):
 
 
 def _trim_eoi(jpg):
+    """Trim trailing garbage after JPEG EOI marker (0xFFD9)."""
     for i in range(len(jpg) - 2, -1, -1):
         if jpg[i] == 0xFF and jpg[i + 1] == 0xD9:
             return jpg[:i + 2]
@@ -37,7 +50,12 @@ def _trim_eoi(jpg):
 
 
 def decode_jpg(jpg_bytes):
-    """Decode JPEG via tjpgd -> (width, height, RGB888 bytes). None on failure."""
+    """Decode JPEG via tjpgd.dll.
+
+    Returns: (width, height, RGB888 bytes) or None on failure.
+
+    Note: tjpgd outputs RGB565, we convert to RGB888.
+    """
     dll = _load_dll()
     w = ctypes.c_uint(0)
     h = ctypes.c_uint(0)
@@ -58,7 +76,11 @@ def decode_jpg(jpg_bytes):
 
 
 def parse_icl(data):
-    """Parse ICL file -> list of dicts: {index, width, height, jpg: bytes}"""
+    """Parse ICL file.
+
+    Returns: list of dicts {index, width, height, jpg: bytes}
+             jpg bytes are trimmed to EOI marker, ready for decode_jpg()
+    """
     if not is_icl(data):
         raise ValueError("not a valid ICL file (GUS_3)")
 

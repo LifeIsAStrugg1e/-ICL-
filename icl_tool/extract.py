@@ -81,7 +81,16 @@ def extract_ico(data):
 
 
 def _extract_jxag_image(data, addr, filesize, index):
-    """Extract single image from JXAG 16-byte info header."""
+    """Extract single image from JXAG 16-byte info header.
+
+    Supported formats:
+      - flag=1, byte[7]=0x10: LZO compressed RGB565 (C tool compatible)
+      - flag=1, byte[7]=0x20: LZO compressed BGRA32 (tool's format)
+      - flag=2:               JPG/PNG/BMP payload (magic bytes detected)
+      - flag=0/else:          uncompressed RGB565 or BGRA32
+
+    Output: 24-bit BMP (alpha dropped, matching tool behavior)
+    """
     if addr + 16 > filesize:
         return None
     if data[addr:addr + 4] != b'JXAG':
@@ -184,8 +193,16 @@ def detect_format(data):
 def extract_file(path, out_dir, fmt_out='raw', quality=95):
     """Extract images from ICL or ICO file.
 
-    fmt_out: 'raw' (keep original jpg/png), 'jpg', 'bmp', 'png'
-    Returns (count, format_detected).
+    Args:
+        path:    input ICL or ICO file
+        out_dir: output directory (created if not exists)
+        fmt_out: 'raw'  = keep original jpg/png (no re-encode)
+                 'jpg'  = re-encode as JPG (quality 10-100)
+                 'bmp'  = convert to 24-bit BMP (default output for JXAG)
+                 'png'  = convert to PNG (lossless)
+        quality: JPG quality (only used when fmt_out='jpg')
+
+    Returns: (count, format_detected) where format is 'icl' or 'ico'
     """
     with open(path, 'rb') as f:
         data = f.read()

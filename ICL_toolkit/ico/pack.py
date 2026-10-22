@@ -9,16 +9,21 @@ from ..bmp import load_image, bmp_to_rgb565
 def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation=0):
     """打包 JXAG ICO 文件
 
-    images: list of dicts. Each dict must have 'index' and one of:
-            'path' (file path, loaded lazily per batch) OR
-            'jpg'/'bmp'/'data' (raw bytes)
-    fmt:    'rgb565' = 16-bit LZO (C工具兼容, flag=1)
-            'rgb24'  = 24-bit LZO 无损 (flag=2, 不兼容C工具)
-            'jpg'    = 24-bit JPG 有损 (C工具兼容, flag=0)
-    quality: JPG 压缩率 10-100 (仅 fmt='jpg' 时生效)
-    batch_size: 每批处理的图片数（控制内存峰值）
-    rotation: 0/90/180/270 度，压缩前顺时针旋转
-    返回打包的图片数量
+    Args:
+        images:    list of dicts, each with 'index' and 'path' (lazy) or 'jpg'/'bmp'/'data'
+        out_path:  output ICO path
+        fmt:       'rgb565' = 16-bit LZO (flag=1, byte[7]=0x10, C工具兼容)
+                   'rgb24'  = BGRA32 LZO 无损 (flag=1, byte[7]=0x20, 不兼容C工具)
+                   'jpg'    = JPG payload (flag=2, byte[7]=0x20, C工具兼容)
+        quality:   JPG 压缩率 10-100 (仅 fmt='jpg', 默认 90)
+        batch_size: 每批处理的图片数（控制内存峰值, 默认 20）
+        rotation:  0/90/180/270 度，压缩前顺时针旋转
+
+    Returns: 打包的图片数量
+
+    JXAG 像素格式（与工具箱 download.js 一致）:
+      - rgb565: little-endian RGB565, top-down
+      - rgb24:  BGRA order (B,G,R,A)
     """
     if not images:
         raise ValueError("no images to pack")

@@ -40,6 +40,16 @@ def extract_ico(data):
 
 
 def _extract_image(data, addr, filesize, index):
+    """解压单张图片（JXAG 16字节信息头）
+
+    支持格式:
+      - flag=1, byte[7]=0x10: LZO RGB565 (C工具兼容)
+      - flag=1, byte[7]=0x20: LZO BGRA32 (工具箱格式)
+      - flag=2:               JPG/PNG/BMP payload (magic检测)
+      - 其他:                 未压缩 RGB565 或 BGRA32
+
+    输出: 24位 BMP (丢弃 Alpha，与工具箱行为一致)
+    """
     if addr + 16 > filesize:
         return None
     if data[addr:addr + 4] != b'JXAG':

@@ -10,6 +10,14 @@ from extract import extract_file, detect_format
 
 
 class App:
+    """ICL/ICO 图片工具 GUI.
+
+    Three modes:
+      - extract: ICL/ICO → images (BMP/JPG/PNG/raw)
+      - pack:    ICL/ICO → JXAG ICO (rgb565/rgb24/jpg)
+      - img2ico: images → JXAG ICO (jpg/png/bmp input)
+    """
+
     def __init__(self, root):
         self.root = root
         root.title("ICL/ICO 图片工具")
@@ -279,6 +287,7 @@ class App:
         threading.Thread(target=self._worker, args=(out, mode), daemon=True).start()
 
     def _worker(self, out, mode):
+        """Background thread worker: dispatch to mode handler."""
         try:
             if mode == "extract":
                 self._do_extract(out)
@@ -295,6 +304,7 @@ class App:
             self.root.after(0, lambda: self.btn_start.config(state="normal"))
 
     def _do_extract(self, out_dir):
+        """Extract mode: ICL/ICO → images (quality fixed to 100)."""
         fmt = self.output_format.get()
         quality = 100  # 解压使用最高质量
         total = len(self.input_paths)
@@ -319,6 +329,7 @@ class App:
         self._log(f"完成，共 {total_images} 张图片")
 
     def _do_pack(self, out_path):
+        """Pack mode: ICL/ICO → JXAG ICO (three compression formats)."""
         total = len(self.input_paths)
         fmt = self.comp_fmt.get()
         q = int(self.lossy_quality.get())
@@ -330,7 +341,7 @@ class App:
         if total == 1:
             path = self.input_paths[0]
             base = os.path.splitext(os.path.basename(path))[0]
-            self._log(f"[1/1] {os.path.basename(path)} ({mode_tag})")
+            self._log(f"[1/1] {os.path.basename(path)} ({fmt_tag})")
 
             with open(path, 'rb') as f:
                 data = f.read()
@@ -362,7 +373,7 @@ class App:
 
             for fi, path in enumerate(self.input_paths):
                 base = os.path.splitext(os.path.basename(path))[0]
-                self._log(f"[{fi+1}/{total}] {os.path.basename(path)} ({mode_tag})")
+                self._log(f"[{fi+1}/{total}] {os.path.basename(path)} ({fmt_tag})")
 
                 with open(path, 'rb') as f:
                     data = f.read()
