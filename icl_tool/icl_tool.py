@@ -59,8 +59,10 @@ class App:
 
         frm_btn = ttk.Frame(frm_file)
         frm_btn.pack(side="right", padx=4, pady=4)
-        ttk.Button(frm_btn, text="添加文件", command=self.add_files).pack(fill="x", pady=2)
-        ttk.Button(frm_btn, text="添加文件夹", command=self.add_folder).pack(fill="x", pady=2)
+        self.btn_add_file = ttk.Button(frm_btn, text="添加文件", command=self.add_files)
+        self.btn_add_file.pack(fill="x", pady=2)
+        self.btn_add_folder = ttk.Button(frm_btn, text="添加文件夹", command=self.add_folder)
+        self.btn_add_folder.pack(fill="x", pady=2)
         ttk.Button(frm_btn, text="移除选中", command=self.remove_selected).pack(fill="x", pady=2)
         ttk.Button(frm_btn, text="清空", command=self.clear_files).pack(fill="x", pady=2)
 
@@ -157,6 +159,14 @@ class App:
         self.frm_lossy.pack_forget()
         self.frm_rotate.pack_forget()
 
+        # 控制按钮显示：img2ico 隐藏"添加文件"，extract/pack 隐藏"添加文件夹"
+        if mode == "img2ico":
+            self.btn_add_file.pack_forget()
+            self.btn_add_folder.pack(fill="x", pady=2)
+        else:
+            self.btn_add_file.pack(fill="x", pady=2)
+            self.btn_add_folder.pack_forget()
+
         if mode == "extract":
             self.frm_extract_fmt.pack(fill="x", padx=8, pady=2)
             for val, label in [("bmp", "BMP（默认，无损）"),
@@ -173,7 +183,22 @@ class App:
             self.frm_lossy.pack(fill="x", padx=8, pady=2)
             self.frm_rotate.pack(fill="x", padx=8, pady=2)
             self._on_fmt_change()
-        self.output_path.set("")
+
+        # 默认输出路径 = 第一个输入文件所在目录
+        self._update_default_output()
+
+    def _update_default_output(self):
+        """根据输入文件自动设置默认输出路径"""
+        if not self.input_paths:
+            self.output_path.set("")
+            return
+        first_dir = os.path.dirname(self.input_paths[0])
+        mode = self.mode.get()
+        if mode == "extract":
+            self.output_path.set(os.path.join(first_dir, "extracted"))
+        else:
+            base = os.path.splitext(os.path.basename(self.input_paths[0]))[0]
+            self.output_path.set(os.path.join(first_dir, base + ".ico"))
 
     def _on_fmt_change(self):
         if self.comp_fmt.get() == "jpg":
@@ -200,6 +225,7 @@ class App:
             if p not in self.input_paths:
                 self.input_paths.append(p)
                 self.lst_files.insert("end", os.path.basename(p))
+        self._update_default_output()
 
     def add_folder(self):
         mode = self.mode.get()
@@ -219,6 +245,7 @@ class App:
                     self.lst_files.insert("end", name)
                     count += 1
         self._log(f"从文件夹添加 {count} 个文件")
+        self._update_default_output()
 
     def remove_selected(self):
         sel = list(self.lst_files.curselection())
