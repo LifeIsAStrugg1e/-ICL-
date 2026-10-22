@@ -11,3 +11,4 @@ build_temp/
 dist/
 *.exe
 !ICL_ICO_Tool.exe
+!ICL_ICO_Tool_Web.exe

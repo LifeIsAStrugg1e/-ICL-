@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICL/ICO 图片工具</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #1a1a2e;
+    --bg2: #16213e;
+    --bg3: #0f3460;
+    --card: #1f2b47;
+    --accent: #4361ee;
+    --accent2: #4cc9f0;
+    --green: #2d8a4e;
+    --green2: #35a35a;
+    --red: #c0392b;
+    --red2: #e74c3c;
+    --text: #e0e0e0;
+    --text2: #8892a4;
+    --border: #2a3a5c;
+  }
+
+  body {
+    font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 卡片 */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--accent2);
+    margin-bottom: 10px;
+  }
+
+  /* 模式选择 */
+  .modes { display: flex; gap: 10px; }
+  .mode-btn {
+    flex: 1;
+    padding: 12px 8px;
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    color: var(--text2);
+    cursor: pointer;
+    text-align: center;
+    font-size: 13px;
+    transition: all .15s;
+  }
+  .mode-btn:hover { border-color: var(--accent); color: var(--text); }
+  .mode-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: bold;
+  }
+  .mode-btn .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+  /* 文件区 */
+  .file-row { display: flex; gap: 12px; }
+  .file-list-wrap { flex: 1; }
+  #fileList {
+    width: 100%;
+    height: 110px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 6px;
+    overflow-y: auto;
+  }
+  #fileList .fitem {
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+  }
+  #fileList .fitem:hover { background: var(--bg3); }
+  #fileList .fitem.sel { background: var(--accent); color: #fff; }
+  #fileList .empty { color: var(--text2); text-align: center; padding-top: 36px; }
+
+  .btn-col { display: flex; flex-direction: column; gap: 6px; width: 120px; }
+
+  /* 按钮 */
+  .btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all .15s;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #5a7aff; }
+  .btn-danger { background: var(--red); color: #000; }
+  .btn-danger:hover { background: var(--red2); }
+  .btn-secondary { background: var(--bg3); color: var(--text); }
+  .btn-secondary:hover { background: #1a4a8a; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* 选项组 */
+  .opt-group { margin-bottom: 8px; }
+  .opt-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .radio-row { display: flex; flex-wrap: wrap; gap: 14px; }
+  .radio-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 13px; cursor: pointer;
+  }
+  .radio-item input { accent-color: var(--accent); }
+
+  /* 滑块 */
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-val { width: 36px; text-align: right; color: var(--accent2); font-weight: bold; }
+
+  /* 输出路径 */
+  .out-row { display: flex; gap: 8px; }
+  .out-row input[type=text] {
+    flex: 1;
+    padding: 8px 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .out-row input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+  /* 运行区 */
+  .run-row { display: flex; align-items: center; gap: 12px; }
+  .btn-start {
+    padding: 10px 32px;
+    background: var(--green);
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-start:hover { background: var(--green2); }
+  .btn-start:disabled { background: #555; cursor: not-allowed; }
+
+  .progress-wrap {
+    flex: 1;
+    height: 22px;
+    background: var(--bg2);
+    border-radius: 11px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width .3s;
+    border-radius: 11px;
+  }
+  .status-text { font-size: 13px; color: var(--accent2); min-width: 60px; text-align: right; }
+
+  /* 日志 */
+  #logArea {
+    width: 100%;
+    height: 150px;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: #7ee787;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    padding: 8px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* 隐藏区域 */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<h1>🗂️ ICL/ICO 图片工具</h1>
+
+<!-- 模式 -->
+<div class="card">
+  <div class="card-title">操作模式</div>
+  <div class="modes">
+    <div class="mode-btn active" data-mode="extract" onclick="setMode('extract')">
+      <span class="icon">📂</span>解压提取<br><small>ICL / ICO → 图片</small>
+    </div>
+    <div class="mode-btn" data-mode="pack" onclick="setMode('pack')">
+      <span class="icon">📦</span>打包<br><small>ICL / ICO → ICO</small>
+    </div>
+    <div class="mode-btn" data-mode="img2ico" onclick="setMode('img2ico')">
+      <span class="icon">🖼️</span>图片压缩<br><small>图片 → ICO</small>
+    </div>
+  </div>
+</div>
+
+<!-- 输入文件 -->
+<div class="card">
+  <div class="card-title">输入文件</div>
+  <div class="file-row">
+    <div class="file-list-wrap">
+      <div id="fileList"><div class="empty">暂无文件，请添加</div></div>
+    </div>
+    <div class="btn-col">
+      <button class="btn btn-secondary" id="btnAddFile" onclick="addFiles()">+ 添加文件</button>
+      <button class="btn btn-secondary" id="btnAddFolder" onclick="addFolder()" style="display:none">+ 添加文件夹</button>
+      <button class="btn btn-danger" onclick="removeSelected()">移除选中</button>
+      <button class="btn btn-danger" onclick="clearFiles()">清空</button>
+    </div>
+  </div>
+</div>
+
+<!-- 输出格式 -->
+<div class="card">
+  <div class="card-title">输出格式</div>
+
+  <!-- 解压格式 -->
+  <div id="extractOpts">
+    <div class="radio-row">
+      <label class="radio-item"><input type="radio" name="extFmt" value="bmp" checked> BMP（默认，无损）</label>
+      <label class="radio-item"><input type="radio" name="extFmt" value="jpg"> JPG（重编码）</label>
+      <label class="radio-item"><input type="radio" name="extFmt" value="png"> PNG（无损）</label>
+    </div>
+  </div>
+
+  <!-- 打包/压缩格式 -->
+  <div id="packOpts" class="hidden">
+    <div class="opt-group">
+      <div class="opt-label">压缩格式</div>
+      <div class="radio-row">
+        <label class="radio-item"><input type="radio" name="compFmt" value="rgb565" checked> RGB565 16-bit 无损（C工具兼容）</label>
+        <label class="radio-item"><input type="radio" name="compFmt" value="rgb24"> RGB24 24-bit 无损（BGRA）</label>
+        <label class="radio-item"><input type="radio" name="compFmt" value="jpg"> JPG 24-bit 有损压缩</label>
+      </div>
+      <div class="slider-row hidden" id="qualityRow">
+        <span class="opt-label" style="margin:0">压缩率</span>
+        <input type="range" min="10" max="100" value="90" id="qualitySlider"
+               oninput="document.getElementById('qualityVal').textContent=this.value">
+        <span class="slider-val" id="qualityVal">90</span>
+      </div>
+    </div>
+    <div class="opt-group">
+      <div class="opt-label">旋转</div>
+      <div class="radio-row">
+        <label class="radio-item"><input type="radio" name="rot" value="0" checked> 不旋转</label>
+        <label class="radio-item"><input type="radio" name="rot" value="90"> 90°</label>
+        <label class="radio-item"><input type="radio" name="rot" value="180"> 180°</label>
+        <label class="radio-item"><input type="radio" name="rot" value="270"> 270°</label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 输出路径 -->
+<div class="card">
+  <div class="card-title">输出路径</div>
+  <div class="opt-label" id="outLabel">输出文件夹</div>
+  <div class="out-row">
+    <input type="text" id="outPath" placeholder="选择输出路径...">
+    <button class="btn btn-primary" onclick="selectOutput()">浏览...</button>
+  </div>
+</div>
+
+<!-- 运行 -->
+<div class="card">
+  <div class="run-row">
+    <button class="btn-start" id="btnStart" onclick="startTask()">▶ 开始</button>
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="status-text" id="statusText">就绪</div>
+  </div>
+</div>
+
+<!-- 日志 -->
+<div class="card">
+  <div class="card-title">日志</div>
+  <div id="logArea"></div>
+</div>
+
+<script>
+// ===== 状态 =====
+let currentMode = 'extract';
+let files = [];          // [{path, name}]
+let selectedIndex = -1;
+let isRunning = false;
+let pollTimer = null;
+
+// ===== pywebview 就绪 =====
+function ready(fn) {
+  if (window.pywebview && window.pywebview.api) fn();
+  else window.addEventListener('pywebviewready', fn);
+}
+
+// ===== 模式切换 =====
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+
+  const isExtract = mode === 'extract';
+  document.getElementById('extractOpts').classList.toggle('hidden', !isExtract);
+  document.getElementById('packOpts').classList.toggle('hidden', isExtract);
+  document.getElementById('outLabel').textContent = isExtract ? '输出文件夹' : '输出 ICO 文件';
+
+  // 按钮显示
+  document.getElementById('btnAddFile').style.display = (mode === 'img2ico') ? 'none' : '';
+  document.getElementById('btnAddFolder').style.display = (mode === 'img2ico') ? 'none' : '';
+
+  // 清空输出路径
+  document.getElementById('outPath').value = '';
+}
+
+// ===== 质量滑块 =====
+document.querySelector('input[name=compFmt][value=jpg]').addEventListener('change', showQuality);
+document.querySelectorAll('input[name=compFmt]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.getElementById('qualityRow').classList.toggle(
+      'hidden', r.value !== 'jpg');
+  });
+});
+function showQuality() {
+  document.getElementById('qualityRow').classList.remove('hidden');
+}
+
+// ===== 文件操作 =====
+async function addFiles() {
+  const paths = await pywebview.api.select_files(currentMode);
+  if (!paths || !paths.length) return;
+  for (const p of paths) {
+    if (!files.find(f => f.path === p)) {
+      files.push({ path: p, name: p.split('\\').pop() });
+    }
+  }
+  renderFiles();
+  updateDefaultOutput();
+}
+
+async function addFolder() {
+  // 文件夹添加通过 select_files 不便，简化为提示使用添加文件
+  // 实际可用 pywebview.api 中扩展
+  const paths = await pywebview.api.select_files(currentMode);
+  if (!paths || !paths.length) return;
+  for (const p of paths) {
+    if (!files.find(f => f.path === p)) {
+      files.push({ path: p, name: p.split('\\').pop() });
+    }
+  }
+  renderFiles();
+  updateDefaultOutput();
+}
+
+function removeSelected() {
+  if (selectedIndex < 0) return;
+  files.splice(selectedIndex, 1);
+  selectedIndex = -1;
+  renderFiles();
+  updateDefaultOutput();
+}
+
+function clearFiles() {
+  files = [];
+  selectedIndex = -1;
+  renderFiles();
+  updateDefaultOutput();
+}
+
+function renderFiles() {
+  const el = document.getElementById('fileList');
+  if (!files.length) {
+    el.innerHTML = '<div class="empty">暂无文件，请添加</div>';
+    return;
+  }
+  el.innerHTML = files.map((f, i) =>
+    `<div class="fitem ${i === selectedIndex ? 'sel' : ''}" onclick="selectFile(${i})">
+       <span>${f.name}</span>
+     </div>`).join('');
+}
+
+function selectFile(i) {
+  selectedIndex = (selectedIndex === i) ? -1 : i;
+  renderFiles();
+}
+
+function updateDefaultOutput() {
+  if (!files.length) {
+    document.getElementById('outPath').value = '';
+    return;
+  }
+  const first = files[0].path;
+  const dir = first.substring(0, first.lastIndexOf('\\'));
+  const base = first.substring(first.lastIndexOf('\\') + 1).replace(/\.[^.]+$/, '');
+  if (currentMode === 'extract') {
+    document.getElementById('outPath').value = dir + '\\extracted';
+  } else {
+    document.getElementById('outPath').value = dir + '\\' + base + '.ico';
+  }
+}
+
+// ===== 输出路径 =====
+async function selectOutput() {
+  const p = await pywebview.api.select_output(currentMode);
+  if (p) document.getElementById('outPath').value = p;
+}
+
+// ===== 启动任务 =====
+async function startTask() {
+  if (isRunning) return;
+  if (!files.length) { alert('请先添加文件'); return; }
+  const out = document.getElementById('outPath').value.trim();
+  if (!out) { alert('请选择输出路径'); return; }
+
+  const mode = currentMode;
+  const outFmt = mode === 'extract'
+    ? document.querySelector('input[name=extFmt]:checked').value
+    : 'ico';
+  const compFmt = document.querySelector('input[name=compFmt]:checked').value;
+  const quality = parseInt(document.getElementById('qualitySlider').value);
+  const rotation = parseInt(document.querySelector('input[name=rot]:checked').value);
+
+  const res = await pywebview.api.run_task(
+    mode, files.map(f => f.path), out, outFmt, compFmt, quality, rotation
+  );
+
+  if (!res.ok) { alert(res.message); return; }
+
+  isRunning = true;
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('logArea').innerHTML = '';
+  startPoll();
+}
+
+// ===== 状态轮询 =====
+function startPoll() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const st = await pywebview.api.get_state();
+    document.getElementById('progressBar').style.width = st.progress + '%';
+    document.getElementById('statusText').textContent = st.status;
+
+    if (st.logs && st.logs.length) {
+      const el = document.getElementById('logArea');
+      el.textContent = st.logs.join('\n');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    if (!st.running) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      isRunning = false;
+      document.getElementById('btnStart').disabled = false;
+    }
+  }, 400);
+}
+
+// ===== 回调（可选，轮询为主） =====
+window.__onLog = function(msg) {};
+window.__onProgress = function(v) {};
+window.__onStatus = function(msg) {};
+
+// ===== 初始化 =====
+ready(() => {
+  setMode('extract');
+});
+</script>
+</body>
+</html>
