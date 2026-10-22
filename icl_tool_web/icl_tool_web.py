@@ -77,8 +77,8 @@ def main():
         html_path,
         js_api=api,
         width=650,
-        height=750,
-        min_size=(600, 650),
+        height=860,
+        min_size=(600, 750),
         resizable=True,
         text_select=True,
     )

@@ -333,9 +333,10 @@ function setMode(mode) {
   document.getElementById('packOpts').classList.toggle('hidden', isExtract);
   document.getElementById('outLabel').textContent = isExtract ? '输出文件夹' : '输出 ICO 文件';
 
-  // 按钮显示: 添加文件常显; 添加文件夹仅图片压缩显示
-  document.getElementById('btnAddFile').style.display = '';
-  document.getElementById('btnAddFolder').style.display = (mode === 'img2ico') ? '' : 'none';
+  // 按钮显示: 图片压缩仅"添加文件夹"; 解压/打包仅"添加文件"
+  const isImg2ico = (mode === 'img2ico');
+  document.getElementById('btnAddFile').style.display = isImg2ico ? 'none' : '';
+  document.getElementById('btnAddFolder').style.display = isImg2ico ? '' : 'none';
 
   // 清空输出路径
   document.getElementById('outPath').value = '';
