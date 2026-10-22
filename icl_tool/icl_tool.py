@@ -197,17 +197,35 @@ class App:
         self._update_default_output()
 
     def _update_default_output(self):
-        """根据输入文件自动设置默认输出路径"""
+        """根据输入文件自动设置默认输出路径
+
+        - 路径归一化（修复 / 和 \ 混用导致的反斜杠问题）
+        - 用户手动修改过的路径不覆盖
+        """
         if not self.input_paths:
             self.output_path.set("")
+            self._auto_out = ""
             return
-        first_dir = os.path.dirname(self.input_paths[0])
+
+        # 归一化输入路径，修复混合斜杠
+        first = os.path.normpath(self.input_paths[0])
+        first_dir = os.path.dirname(first)
+
+        # 当前值非空且不是我们自动生成的 → 用户手动改过，不覆盖
+        current = self.output_path.get().strip()
+        if current and current != getattr(self, "_auto_out", ""):
+            return
+
         mode = self.mode.get()
         if mode == "extract":
-            self.output_path.set(os.path.join(first_dir, "extracted"))
+            auto = os.path.join(first_dir, "extracted")
         else:
-            base = os.path.splitext(os.path.basename(self.input_paths[0]))[0]
-            self.output_path.set(os.path.join(first_dir, base + ".ico"))
+            base = os.path.splitext(os.path.basename(first))[0]
+            auto = os.path.join(first_dir, base + ".ico")
+
+        auto = os.path.normpath(auto)
+        self.output_path.set(auto)
+        self._auto_out = auto
 
     def _on_fmt_change(self):
         if self.comp_fmt.get() == "jpg":

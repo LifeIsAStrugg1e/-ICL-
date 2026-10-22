@@ -359,6 +359,7 @@ let pollTimer = null;
 let previewIndex = 0;
 let previewTotal = 0;
 let previewTimer = null;
+let autoOut = '';   // 自动生成的输出路径（用于判断用户是否手改）
 
 // ===== pywebview 就绪 =====
 function ready(fn) {
@@ -388,8 +389,8 @@ function setMode(mode) {
   previewIndex = 0;
   if (mode !== 'extract') refreshPreviewCount();
 
-  // 清空输出路径
-  document.getElementById('outPath').value = '';
+  // 输出路径随模式重算
+  updateDefaultOutput();
 }
 
 // ===== 质量滑块 =====
@@ -410,7 +411,7 @@ async function addFiles() {
   if (!paths || !paths.length) return;
   for (const p of paths) {
     if (!files.find(f => f.path === p)) {
-      files.push({ path: p, name: p.split('\\').pop() });
+      files.push({ path: p, name: p.replace(/\//g, '\\').split('\\').pop() });
     }
   }
   renderFiles();
@@ -427,7 +428,7 @@ async function addFolder() {
   if (!paths || !paths.length) return;
   for (const p of paths) {
     if (!files.find(f => f.path === p)) {
-      files.push({ path: p, name: p.split('\\').pop() });
+      files.push({ path: p, name: p.replace(/\//g, '\\').split('\\').pop() });
     }
   }
   renderFiles();
@@ -467,19 +468,19 @@ function selectFile(i) {
   renderFiles();
 }
 
-function updateDefaultOutput() {
+async function updateDefaultOutput() {
+  const el = document.getElementById('outPath');
   if (!files.length) {
-    document.getElementById('outPath').value = '';
+    el.value = '';
+    autoOut = '';
     return;
   }
-  const first = files[0].path;
-  const dir = first.substring(0, first.lastIndexOf('\\'));
-  const base = first.substring(first.lastIndexOf('\\') + 1).replace(/\.[^.]+$/, '');
-  if (currentMode === 'extract') {
-    document.getElementById('outPath').value = dir + '\\extracted';
-  } else {
-    document.getElementById('outPath').value = dir + '\\' + base + '.ico';
-  }
+  // 用户手动改过 → 不覆盖
+  if (el.value && el.value !== autoOut) return;
+  // 路径计算交给 Python 端（归一化处理 / 和 \ 混用）
+  const p = await pywebview.api.get_default_output(files[0].path, currentMode);
+  el.value = p || '';
+  autoOut = p || '';
 }
 
 // ===== 输出路径 =====

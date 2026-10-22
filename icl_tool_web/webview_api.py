@@ -107,6 +107,23 @@ class Api:
             root.destroy()
         return p or ""
 
+    def get_default_output(self, first_path, mode):
+        """计算默认输出路径（Python 端归一化，兼容 / 和 \ 混用）
+
+        Args:
+            first_path: 第一个输入文件的完整路径
+            mode: 'extract' → <目录>/extracted; 其他 → <目录>/<文件名>.ico
+        Returns: 归一化后的输出路径
+        """
+        try:
+            d = os.path.normpath(os.path.dirname(os.path.normpath(first_path)))
+            if mode == 'extract':
+                return os.path.join(d, 'extracted')
+            base = os.path.splitext(os.path.basename(first_path))[0]
+            return os.path.join(d, base + '.ico')
+        except Exception:
+            return ""
+
     def list_files(self, folder, exts):
         """列出文件夹中匹配扩展名的文件
 
