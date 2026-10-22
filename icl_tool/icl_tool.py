@@ -39,10 +39,10 @@ class App:
 
         # 红色按钮样式
         style = ttk.Style()
-        style.configure("Danger.TButton", background="#c0392b", foreground="white")
+        style.configure("Danger.TButton", background="#c0392b", foreground="black")
         style.map("Danger.TButton",
                   background=[("active", "#e74c3c"), ("disabled", "#95a5a6")],
-                  foreground=[("disabled", "#ecf0f1")])
+                  foreground=[("disabled", "#666666")])
 
         # ===== mode =====
         frm_mode = ttk.LabelFrame(self.root, text="操作模式")
