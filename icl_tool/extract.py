@@ -190,15 +190,14 @@ def detect_format(data):
     return None
 
 
-def extract_file(path, out_dir, fmt_out='raw', quality=95):
+def extract_file(path, out_dir, fmt_out='bmp', quality=95):
     """Extract images from ICL or ICO file.
 
     Args:
         path:    input ICL or ICO file
         out_dir: output directory (created if not exists)
-        fmt_out: 'raw'  = keep original jpg/png (no re-encode)
+        fmt_out: 'bmp'  = 24-bit BMP (default, lossless)
                  'jpg'  = re-encode as JPG (quality 10-100)
-                 'bmp'  = convert to 24-bit BMP (default output for JXAG)
                  'png'  = convert to PNG (lossless)
         quality: JPG quality (only used when fmt_out='jpg')
 
@@ -231,60 +230,42 @@ def extract_file(path, out_dir, fmt_out='raw', quality=95):
         idx = img['index']
         raw = img['data']
 
-        if fmt_out == 'raw':
-            # keep original format
-            if raw[:2] == b'\xff\xd8':
-                ext = 'jpg'
-            elif raw[:8] == b'\x89PNG\r\n\x1a\n':
-                ext = 'png'
-            elif raw[:2] == b'BM':
-                ext = 'bmp'
-            else:
-                ext = 'bin'
-            outfile = os.path.join(out_dir, "%d.%s" % (seq, ext))
-            with open(outfile, 'wb') as f:
-                f.write(raw)
-            saved += 1
-            seq += 1
-
-        else:
-            # decode then re-encode
-            if raw[:2] == b'\xff\xd8':
-                result = decode_jpg(raw)
-                if result is None:
-                    print("  [%04d] decode failed" % idx)
-                    continue
-                w, h, rgb = result
-                pil = Image.frombytes('RGB', (w, h), rgb)
-            elif raw[:8] == b'\x89PNG\r\n\x1a\n':
-                import io
-                pil = Image.open(io.BytesIO(raw))
-                pil.load()
-            elif raw[:2] == b'BM':
-                import io
-                pil = Image.open(io.BytesIO(raw))
-                pil.load()
-            else:
-                print("  [%04d] unknown format, skip" % idx)
+        # decode source to PIL
+        if raw[:2] == b'\xff\xd8':
+            result = decode_jpg(raw)
+            if result is None:
+                print("  [%04d] decode failed" % idx)
                 continue
+            w, h, rgb = result
+            pil = Image.frombytes('RGB', (w, h), rgb)
+        elif raw[:8] == b'\x89PNG\r\n\x1a\n':
+            import io
+            pil = Image.open(io.BytesIO(raw))
+            pil.load()
+        elif raw[:2] == b'BM':
+            import io
+            pil = Image.open(io.BytesIO(raw))
+            pil.load()
+        else:
+            print("  [%04d] unknown format, skip" % idx)
+            continue
 
-            outfile = os.path.join(out_dir, "%d.%s" % (seq, fmt_out))
-            if fmt_out == 'jpg':
-                pil.save(outfile, 'JPEG', quality=quality)
-            elif fmt_out == 'bmp':
-                pil.save(outfile, 'BMP')
-            elif fmt_out == 'png':
-                pil.save(outfile, 'PNG')
-            else:
-                pil.save(outfile)
-            saved += 1
-            seq += 1
+        # save as requested format
+        outfile = os.path.join(out_dir, "%d.%s" % (seq, fmt_out))
+        if fmt_out == 'jpg':
+            pil.convert('RGB').save(outfile, 'JPEG', quality=quality)
+        elif fmt_out == 'png':
+            pil.save(outfile, 'PNG')
+        else:  # bmp (default)
+            pil.save(outfile, 'BMP')
+        saved += 1
+        seq += 1
 
     return saved, file_fmt
 
 
 def main():
-    fmt_out = 'raw'
+    fmt_out = 'bmp'
     quality = 95
     files = []
     args = sys.argv[1:]
@@ -307,7 +288,7 @@ def main():
                 files.append(f)
 
     if not files:
-        print("usage: python extract.py [--format raw|jpg|bmp|png] [--quality N] file.icl|file.ico ...")
+        print("usage: python extract.py [--format bmp|jpg|png] [--quality N] file.icl|file.ico ...")
         print("  or put .icl/.ico files in this folder")
         if sys.stdin.isatty():
             input("press enter to exit")

@@ -25,7 +25,7 @@ class App:
 
         self.input_paths = []
         self.mode = tk.StringVar(value="extract")   # extract | pack | img2ico
-        self.output_format = tk.StringVar(value="raw")  # raw | jpg | bmp | png (extract) / ico (pack)
+        self.output_format = tk.StringVar(value="bmp")  # bmp | jpg | png (extract) / ico (pack)
         self.output_path = tk.StringVar()
         self.comp_fmt = tk.StringVar(value="rgb565")  # rgb565 | rgb24 | jpg
         self.lossy_quality = tk.IntVar(value=90)
@@ -159,14 +159,13 @@ class App:
 
         if mode == "extract":
             self.frm_extract_fmt.pack(fill="x", padx=8, pady=2)
-            for val, label in [("raw", "原始文件（保持 jpg/png 不动）"),
+            for val, label in [("bmp", "BMP（默认，无损）"),
                                ("jpg", "JPG（解码后重编码）"),
-                               ("bmp", "BMP"),
-                               ("png", "PNG")]:
+                               ("png", "PNG（无损）")]:
                 ttk.Radiobutton(self.frm_extract_fmt, text=label,
                                 variable=self.output_format, value=val).pack(anchor="w", pady=1)
-            if self.output_format.get() not in ("raw", "jpg", "bmp", "png"):
-                self.output_format.set("raw")
+            if self.output_format.get() not in ("bmp", "jpg", "png"):
+                self.output_format.set("bmp")
             self.lbl_out_desc.config(text="输出文件夹:")
         elif mode in ("img2ico", "pack"):
             self.output_format.set("ico")
