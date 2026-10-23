@@ -5,6 +5,7 @@
 import os
 import sys
 import threading
+import time
 
 # 核心逻辑在 icl_tool 目录（共用）
 _CORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icl_tool")
@@ -14,6 +15,15 @@ if _CORE not in sys.path:
 from icl_core import parse_icl, decode_jpg
 from ico_core import pack_ico
 from extract import extract_file, detect_format, extract_ico
+
+# 任务节流: sleep = 实测耗时 × ratio
+# 1.0 → 总耗时约 2 倍（速度约 50%）; 0 = 不限速
+_THROTTLE_RATIO = 1.0
+
+
+def _throttle(elapsed):
+    if elapsed > 0:
+        time.sleep(elapsed * _THROTTLE_RATIO)
 
 
 class Api:
@@ -248,12 +258,18 @@ class Api:
 
             sub_dir = os.path.join(out_dir, base) if total > 1 else out_dir
 
-            def _cb(done, total_img, fname, _fi=fi, _total=total):
+            last_ts = [time.perf_counter()]
+
+            def _cb(done, total_img, fname, _fi=fi, _total=total, _ts=last_ts):
                 self._log("    提取 %d/%d -> %s" % (done, total_img, fname))
                 base_pct = _fi / _total * 100
                 pct = base_pct + (done / float(total_img or 1)) / _total * 100
                 self._progress(pct)
                 self._status("%d%%" % int(pct))
+                # 节流: 按上一张实际耗时放慢
+                now = time.perf_counter()
+                _throttle(now - _ts[0])
+                _ts[0] = time.perf_counter()
 
             try:
                 count, file_fmt = extract_file(path, sub_dir,
@@ -276,11 +292,13 @@ class Api:
 
         if total == 1:
             self._log("[1/1] %s (%s)" % (os.path.basename(paths[0]), fmt_tag))
+            t0 = time.perf_counter()
             images = self._load_images(paths[0])
             if not images:
                 self._log("  没有找到图片")
                 return
             count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=rot)
+            _throttle(time.perf_counter() - t0)
             self._progress(100)
             self._log("  打包 %d 张 -> %s" % (count, out_path))
         else:
@@ -293,6 +311,7 @@ class Api:
                 base = os.path.splitext(os.path.basename(path))[0]
                 self._log("[%d/%d] %s (%s)" % (fi + 1, total,
                                                os.path.basename(path), fmt_tag))
+                t0 = time.perf_counter()
                 try:
                     images = self._load_images(path)
                 except Exception as e:
@@ -306,6 +325,7 @@ class Api:
                 ico_path = os.path.join(out_dir, base + ".ico")
                 count = pack_ico(images, ico_path, fmt=fmt,
                                  quality=q, rotation=rot)
+                _throttle(time.perf_counter() - t0)
                 self._log("  打包 %d 张 -> %s" % (count, ico_path))
 
             self._progress(100)
@@ -320,7 +340,9 @@ class Api:
 
         self._status("打包 %d 张 (%s)..." % (total, fmt_tag))
         images = [{'index': i, 'path': p} for i, p in enumerate(paths)]
+        t0 = time.perf_counter()
         count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=rot)
+        _throttle(time.perf_counter() - t0)
         self._progress(100)
         self._log("打包 %d 张 -> %s [%s]" % (count, out_path, fmt_tag))
 
