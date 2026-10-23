@@ -118,6 +118,8 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
         fmt:       'rgb565' = 16-bit LZO (flag=1, byte[7]=0x10, C tool compatible)
                    'rgb24'  = BGRA32 LZO lossless (flag=1, byte[7]=0x20, NOT C tool compatible)
                    'jpg'    = JPG payload (flag=2, byte[7]=0x20, C tool compatible)
+                   'jpgpng' = keep original format: PNG input -> PNG payload
+                              (flag=3, byte[7]=0x20), others -> JPG (flag=2, quality)
         quality:   JPG quality 10-100 (only used when fmt='jpg', default 90)
         batch_size: images processed in memory at once (default 20, for memory optimization)
         rotation:  0/90/180/270 degrees clockwise, applied before compression
@@ -135,8 +137,8 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
     """
     if not images:
         raise ValueError("no images to pack")
-    if fmt not in ('rgb565', 'rgb24', 'jpg'):
-        raise ValueError("fmt must be 'rgb565', 'rgb24', or 'jpg'")
+    if fmt not in ('rgb565', 'rgb24', 'jpg', 'jpgpng'):
+        raise ValueError("fmt must be 'rgb565', 'rgb24', 'jpg', or 'jpgpng'")
 
     sorted_images = sorted(images, key=lambda x: x['index'])
     count = len(sorted_images)
@@ -186,6 +188,21 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                     pil.convert('RGB').save(buf, 'JPEG', quality=quality)
                     payload = buf.getvalue()
                     compress_flag = 2
+                    byte7 = 0x20
+                elif fmt == 'jpgpng':
+                    # Keep original format (toolbox's jpg/png mode):
+                    #   PNG input -> PNG payload (flag=3), others -> JPG (flag=2)
+                    w, h = pil.size
+                    if raw[:8] == b'\x89PNG\r\n\x1a\n':
+                        buf = io.BytesIO()
+                        pil.save(buf, 'PNG')
+                        payload = buf.getvalue()
+                        compress_flag = 3
+                    else:
+                        buf = io.BytesIO()
+                        pil.convert('RGB').save(buf, 'JPEG', quality=quality)
+                        payload = buf.getvalue()
+                        compress_flag = 2
                     byte7 = 0x20
                 elif fmt == 'rgb24':
                     # BGRA32 + LZO (24-bit lossless, byte[7]=32, flag=1)

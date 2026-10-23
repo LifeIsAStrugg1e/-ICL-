@@ -270,7 +270,7 @@ class Api:
         """打包 ICL/ICO → JXAG ICO"""
         total = len(paths)
         fmt_tag = {'rgb565': 'RGB565无损', 'rgb24': 'RGB24无损',
-                   'jpg': 'JPG q=%d' % q}[fmt]
+                   'jpg': 'JPG q=%d' % q, 'jpgpng': 'JPG/PNG原格式 q=%d' % q}[fmt]
         if rot:
             fmt_tag += ", 旋转%d°" % rot
 
@@ -314,7 +314,7 @@ class Api:
         """图片 → JXAG ICO（懒加载）"""
         total = len(paths)
         fmt_tag = {'rgb565': 'RGB565无损', 'rgb24': 'RGB24无损',
-                   'jpg': 'JPG q=%d' % q}[fmt]
+                   'jpg': 'JPG q=%d' % q, 'jpgpng': 'JPG/PNG原格式 q=%d' % q}[fmt]
         if rot:
             fmt_tag += ", 旋转%d°" % rot
 
@@ -346,7 +346,7 @@ class Api:
         Args:
             path:     输入文件路径 (ICL/ICO 或图片文件)
             index:    第几张图 (图片压缩模式 = 文件在列表中的序号对应)
-            fmt:      rgb565 / rgb24 / jpg
+            fmt:      rgb565 / rgb24 / jpg / jpgpng
             rotation: 0/90/180/270
             quality:  JPG 质量 10-100
 
@@ -368,6 +368,9 @@ class Api:
             work = pil.copy()
             if int(rotation) in (90, 180, 270):
                 work = work.rotate(-int(rotation), expand=True)
+            if fmt == 'jpgpng':
+                # 保持原格式: PNG 源无损(不变), 其他按 quality 模拟 JPG
+                fmt = 'jpg' if not self._is_png_source(path, index) else 'none'
             work = self._simulate_fmt(work, fmt, int(quality))
 
             preview = self._pil_to_data_url(work, max_w=256)
@@ -384,6 +387,22 @@ class Api:
             return len(self._load_images(path))
         except Exception:
             return 0
+
+    def _is_png_source(self, path, index):
+        """jpgpng 模式: 判断源是否 PNG (决定预览是否模拟 JPG 有损)"""
+        try:
+            ext = os.path.splitext(path)[1].lower()
+            if ext in ('.jpg', '.jpeg', '.bmp'):
+                return False
+            if ext == '.png':
+                return True
+            images = self._load_images(path)
+            if index >= len(images):
+                return False
+            raw = images[index].get('jpg') or images[index].get('data') or b''
+            return raw[:8] == b'\x89PNG\r\n\x1a\n'
+        except Exception:
+            return False
 
     def _load_preview_source(self, path, index):
         """加载预览源图 -> PIL Image"""

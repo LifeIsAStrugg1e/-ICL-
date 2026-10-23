@@ -308,6 +308,7 @@
         <label class="radio-item"><input type="radio" name="compFmt" value="rgb565" checked> RGB565 16-bit 无损（C工具兼容）</label>
         <label class="radio-item"><input type="radio" name="compFmt" value="rgb24"> RGB24 24-bit 无损（BGRA）</label>
         <label class="radio-item"><input type="radio" name="compFmt" value="jpg"> JPG 24-bit 有损压缩</label>
+        <label class="radio-item"><input type="radio" name="compFmt" value="jpgpng"> JPG/PNG 保持原格式</label>
       </div>
       <div class="slider-row hidden" id="qualityRow">
         <span class="opt-label" style="margin:0">压缩率</span>
@@ -440,7 +441,7 @@ document.querySelector('input[name=compFmt][value=jpg]').addEventListener('chang
 document.querySelectorAll('input[name=compFmt]').forEach(r => {
   r.addEventListener('change', () => {
     document.getElementById('qualityRow').classList.toggle(
-      'hidden', r.value !== 'jpg');
+      'hidden', r.value !== 'jpg' && r.value !== 'jpgpng');
   });
 });
 function showQuality() {
