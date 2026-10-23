@@ -8,7 +8,9 @@ extracted/
 
 # Build artifacts
 build_temp/
+build/
 dist/
 *.exe
 !ICL_ICO_Tool.exe
 !ICL_ICO_Tool_Web.exe
+!ICL_ICO_Tool_Web_Beta.exe
