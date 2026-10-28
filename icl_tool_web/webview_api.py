@@ -3,6 +3,7 @@
 前端 JS 调用 pywebview.api.xxx() → 这里执行核心逻辑 → 返回结果
 """
 import os
+import re
 import sys
 import threading
 
@@ -135,12 +136,17 @@ class Api:
         try:
             exts = [e.lower() for e in exts]
             out = []
-            for name in sorted(os.listdir(folder)):
+            for name in sorted(os.listdir(folder), key=self._natural_sort_key):
                 if name.lower().endswith(tuple(exts)):
                     out.append(os.path.join(folder, name))
             return out
         except Exception:
             return []
+
+    @staticmethod
+    def _natural_sort_key(name):
+        return [int(part) if part.isdigit() else part.casefold()
+                for part in re.split(r'(\d+)', name)]
 
     def select_output(self, mode):
         """打开输出路径选择
@@ -280,9 +286,12 @@ class Api:
             if not images:
                 self._log("  没有找到图片")
                 return
-            count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=rot)
+            out_dir = os.path.dirname(out_path)
+            out_name = os.path.splitext(os.path.basename(paths[0]))[0] + ".ico"
+            ico_path = os.path.join(out_dir, out_name)
+            count = pack_ico(images, ico_path, fmt=fmt, quality=q, rotation=rot)
             self._progress(100)
-            self._log("  打包 %d 张 -> %s" % (count, out_path))
+            self._log("  打包 %d 张 -> %s" % (count, ico_path))
         else:
             out_dir = out_path
             if out_dir.lower().endswith(".ico"):
@@ -340,7 +349,7 @@ class Api:
 
     # ---- 预览 ----
 
-    def get_preview(self, path, index, fmt, rotation, quality):
+    def get_preview(self, path, index, fmt, rotation, quality, max_w=256):
         """获取单张图的 原图/效果图 预览 (base64)
 
         Args:
@@ -362,7 +371,8 @@ class Api:
             if pil is None:
                 return {"ok": False, "message": "无法加载图片"}
 
-            origin = self._pil_to_data_url(pil, max_w=256)
+            max_w = max(256, min(int(max_w), 4096))
+            origin = self._pil_to_data_url(pil, max_w=max_w)
 
             # 应用变换: 旋转 → 格式效果
             work = pil.copy()
@@ -373,7 +383,7 @@ class Api:
                 fmt = 'jpg' if not self._is_png_source(path, index) else 'none'
             work = self._simulate_fmt(work, fmt, int(quality))
 
-            preview = self._pil_to_data_url(work, max_w=256)
+            preview = self._pil_to_data_url(work, max_w=max_w)
             return {"ok": True, "origin": origin, "preview": preview}
         except Exception as e:
             return {"ok": False, "message": str(e)}

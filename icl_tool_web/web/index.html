@@ -8,19 +8,19 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
-    --bg: #1a1a2e;
-    --bg2: #16213e;
-    --bg3: #0f3460;
-    --card: #1f2b47;
-    --accent: #4361ee;
-    --accent2: #4cc9f0;
-    --green: #2d8a4e;
-    --green2: #35a35a;
-    --red: #c0392b;
-    --red2: #e74c3c;
-    --text: #e0e0e0;
-    --text2: #8892a4;
-    --border: #2a3a5c;
+    --bg: #f3f6fa;
+    --bg2: #ffffff;
+    --bg3: #e8eef7;
+    --card: #ffffff;
+    --accent: #2563c7;
+    --accent2: #167a8a;
+    --green: #27834a;
+    --green2: #1f713e;
+    --red: #c93636;
+    --red2: #ab2525;
+    --text: #202b3c;
+    --text2: #64748b;
+    --border: #d5deea;
   }
 
   body {
@@ -30,12 +30,13 @@
     padding: 16px;
     zoom: 85%;
     min-height: 100vh;
+    font-size: 15px;
   }
 
   h1 {
-    font-size: 20px;
+    font-size: 23px;
     margin-bottom: 16px;
-    color: var(--accent2);
+    color: var(--accent);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -45,14 +46,14 @@
   .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 6px;
     padding: 14px 16px;
     margin-bottom: 14px;
   }
   .card-title {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
-    color: var(--accent2);
+    color: var(--accent);
     margin-bottom: 10px;
   }
 
@@ -67,17 +68,17 @@
     color: var(--text2);
     cursor: pointer;
     text-align: center;
-    font-size: 13px;
+    font-size: 15px;
     transition: all .15s;
   }
   .mode-btn:hover { border-color: var(--accent); color: var(--text); }
   .mode-btn.active {
-    background: var(--accent);
+    background: #e7f0ff;
     border-color: var(--accent);
-    color: #fff;
+    color: #174a99;
     font-weight: bold;
   }
-  .mode-btn .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .mode-btn .icon { font-size: 27px; display: block; margin-bottom: 5px; }
 
   /* 文件区 */
   .file-row { display: flex; gap: 12px; }
@@ -89,7 +90,7 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 15px;
     padding: 6px;
     overflow-y: auto;
   }
@@ -101,7 +102,7 @@
     justify-content: space-between;
   }
   #fileList .fitem:hover { background: var(--bg3); }
-  #fileList .fitem.sel { background: var(--accent); color: #fff; }
+  #fileList .fitem.sel { background: #e7f0ff; color: #174a99; }
   #fileList .empty { color: var(--text2); text-align: center; padding-top: 36px; }
 
   .btn-col { display: flex; flex-direction: column; gap: 6px; width: 120px; }
@@ -112,32 +113,32 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 15px;
     transition: all .15s;
     font-family: inherit;
   }
   .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #5a7aff; }
-  .btn-danger { background: var(--red); color: #000; }
+  .btn-primary:hover { background: #1e50a7; }
+  .btn-danger { background: var(--red); color: #fff; }
   .btn-danger:hover { background: var(--red2); }
   .btn-secondary { background: var(--bg3); color: var(--text); }
-  .btn-secondary:hover { background: #1a4a8a; }
+  .btn-secondary:hover { background: #dbe5f2; }
   .btn:disabled { opacity: .5; cursor: not-allowed; }
 
   /* 选项组 */
   .opt-group { margin-bottom: 8px; }
-  .opt-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .opt-label { font-size: 15px; color: var(--text2); margin-bottom: 6px; }
   .radio-row { display: flex; flex-wrap: wrap; gap: 14px; }
   .radio-item {
     display: flex; align-items: center; gap: 5px;
-    font-size: 13px; cursor: pointer;
+    font-size: 15px; cursor: pointer;
   }
   .radio-item input { accent-color: var(--accent); }
 
   /* 滑块 */
   .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
   .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
-  .slider-val { width: 36px; text-align: right; color: var(--accent2); font-weight: bold; }
+  .slider-val { width: 36px; text-align: right; color: var(--accent); font-weight: bold; }
 
   /* 输出路径 */
   .out-row { display: flex; gap: 8px; }
@@ -148,7 +149,7 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 15px;
   }
   .out-row input[type=text]:focus { outline: none; border-color: var(--accent); }
 
@@ -166,7 +167,7 @@
     transition: background .15s;
   }
   .btn-start:hover { background: var(--green2); }
-  .btn-start:disabled { background: #555; cursor: not-allowed; }
+  .btn-start:disabled { background: #8a96a8; cursor: not-allowed; }
 
   .progress-wrap {
     flex: 1;
@@ -183,18 +184,18 @@
     transition: width .3s;
     border-radius: 11px;
   }
-  .status-text { font-size: 13px; color: var(--accent2); min-width: 60px; text-align: right; }
+  .status-text { font-size: 15px; color: var(--accent); min-width: 60px; text-align: right; }
 
   /* 日志 */
   #logArea {
     width: 100%;
     height: 150px;
-    background: #0d1117;
+    background: #f8fafc;
     border: 1px solid var(--border);
     border-radius: 6px;
-    color: #7ee787;
+    color: #245b3a;
     font-family: Consolas, monospace;
-    font-size: 12px;
+    font-size: 13px;
     padding: 8px;
     overflow-y: auto;
     white-space: pre-wrap;
@@ -207,7 +208,7 @@
   /* 转换中模态弹窗 */
   .modal-mask {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,.45);
+    background: rgba(31,42,58,.28);
     display: flex; align-items: center; justify-content: center;
     z-index: 999;
   }
@@ -218,9 +219,9 @@
     padding: 24px 30px;
     width: 380px;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    box-shadow: 0 8px 32px rgba(31,42,58,.18);
   }
-  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+  .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 14px; }
   .modal-progress-wrap {
     height: 8px;
     background: var(--bg);
@@ -228,12 +229,12 @@
     overflow: hidden;
     margin-bottom: 10px;
   }
-  .modal-status { font-size: 12px; color: var(--text2); }
+  .modal-status { font-size: 14px; color: var(--text2); }
 
   /* 预览 */
   .preview-row { display: flex; align-items: center; gap: 10px; }
   .pv-box { flex: 1; }
-  .pv-label { font-size: 11px; color: var(--text2); text-align: center; margin-bottom: 4px; }
+  .pv-label { font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 4px; }
   .pv-img-wrap {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -245,10 +246,32 @@
     overflow: hidden;
   }
   .pv-img-wrap img { max-width: 100%; max-height: 100%; }
-  .pv-arrow { font-size: 20px; color: var(--accent2); padding-top: 16px; }
+  .pv-placeholder { color: var(--text2); font-size: 14px; line-height: 1.5; text-align: center; padding: 12px; }
+  .pv-arrow { font-size: 26px; color: var(--accent); padding-top: 16px; }
   .pv-nav { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-  .pv-info { font-size: 12px; color: var(--accent2); min-width: 80px; text-align: center; }
-  .pv-hint { font-size: 11px; color: var(--text2); margin-left: auto; }
+  .pv-info { font-size: 14px; color: var(--accent); min-width: 80px; text-align: center; }
+  .pv-hint { font-size: 13px; color: var(--text2); margin-left: auto; }
+  .pv-img-wrap img { cursor: zoom-in; }
+
+  /* 大图查看 */
+  .lightbox-mask {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(15, 23, 42, .78);
+    display: flex; align-items: center; justify-content: center;
+    padding: 28px;
+  }
+  .lightbox-content {
+    position: relative; max-width: 94vw; max-height: 94vh;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .lightbox-title { color: #fff; font-size: 16px; }
+  .lightbox-image-wrap { overflow: auto; max-width: 94vw; max-height: 88vh; }
+  .lightbox-image { display: block; max-width: none; transform-origin: center center; cursor: zoom-out; }
+  .lightbox-close {
+    position: absolute; top: -12px; right: -12px; z-index: 1;
+    width: 34px; height: 34px; border: 0; border-radius: 50%;
+    background: #fff; color: #334155; font-size: 22px; cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -335,12 +358,12 @@
   <div class="preview-row">
     <div class="pv-box">
       <div class="pv-label">原图</div>
-      <div class="pv-img-wrap"><img id="pvOrigin" alt="原图"></div>
+      <div class="pv-img-wrap"><span class="pv-placeholder" id="pvOriginEmpty">请添加图片后预览</span><img id="pvOrigin" alt="原图" onclick="openLightbox('origin')" hidden></div>
     </div>
-    <div class="pv-arrow">→</div>
+    <div class="pv-arrow" id="pvArrow">→</div>
     <div class="pv-box">
       <div class="pv-label">效果图</div>
-      <div class="pv-img-wrap"><img id="pvPreview" alt="效果图"></div>
+      <div class="pv-img-wrap"><span class="pv-placeholder" id="pvPreviewEmpty">请添加图片后预览</span><img id="pvPreview" alt="效果图" onclick="openLightbox('preview')" hidden></div>
     </div>
   </div>
   <div class="pv-nav">
@@ -384,6 +407,16 @@
       <div class="progress-bar" id="modalProgressBar"></div>
     </div>
     <div class="modal-status" id="modalStatus">准备中...</div>
+  </div>
+</div>
+
+<div class="lightbox-mask hidden" id="lightbox" onclick="closeLightbox(event)">
+  <div class="lightbox-content">
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="关闭">×</button>
+    <div class="lightbox-title" id="lightboxTitle"></div>
+    <div class="lightbox-image-wrap">
+      <img class="lightbox-image" id="lightboxImage" alt="大图预览">
+    </div>
   </div>
 </div>
 
@@ -600,6 +633,11 @@ async function refreshPreviewCount() {
     document.getElementById('pvInfo').textContent = '无文件';
     document.getElementById('pvOrigin').removeAttribute('src');
     document.getElementById('pvPreview').removeAttribute('src');
+    document.getElementById('pvOrigin').hidden = true;
+    document.getElementById('pvPreview').hidden = true;
+    document.getElementById('pvOriginEmpty').hidden = false;
+    document.getElementById('pvPreviewEmpty').hidden = false;
+    document.getElementById('pvArrow').textContent = '→';
     return;
   }
   // 打包模式: 只取第一份文件的前3张; 图片压缩: 全部文件
@@ -627,8 +665,15 @@ async function refreshPreview() {
   }
 
   if (res.ok) {
-    document.getElementById('pvOrigin').src = res.origin;
-    document.getElementById('pvPreview').src = res.preview;
+    const origin = document.getElementById('pvOrigin');
+    const preview = document.getElementById('pvPreview');
+    origin.src = res.origin;
+    preview.src = res.preview;
+    origin.hidden = false;
+    preview.hidden = false;
+    document.getElementById('pvOriginEmpty').hidden = true;
+    document.getElementById('pvPreviewEmpty').hidden = true;
+    document.getElementById('pvArrow').textContent = '→';
     document.getElementById('pvInfo').textContent =
       '第 ' + (previewIndex + 1) + ' / ' + previewTotal + ' 张';
     const rotTxt = rot ? rot + '°' : '不旋转';
@@ -638,6 +683,42 @@ async function refreshPreview() {
     document.getElementById('pvInfo').textContent = res.message || '预览失败';
   }
 }
+
+async function openLightbox(kind) {
+  if (!files.length || previewTotal === 0) return;
+  const fmt = document.querySelector('input[name=compFmt]:checked').value;
+  const rot = parseInt(document.querySelector('input[name=rot]:checked').value);
+  const q = parseInt(document.getElementById('qualitySlider').value);
+  const path = currentMode === 'pack' ? files[0].path : files[previewIndex].path;
+  const index = currentMode === 'pack' ? previewIndex : 0;
+  const res = await pywebview.api.get_preview(path, index, fmt, rot, q, 2048);
+  if (!res.ok) return;
+  const image = document.getElementById('lightboxImage');
+  image.src = kind === 'origin' ? res.origin : res.preview;
+  image.style.width = 'auto';
+  image.style.height = 'auto';
+  image.style.transform = 'scale(1)';
+  image.dataset.scale = '1';
+  document.getElementById('lightboxTitle').textContent = kind === 'origin' ? '原图' : '效果图';
+  document.getElementById('lightbox').classList.remove('hidden');
+}
+
+function closeLightbox(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('lightbox').classList.add('hidden');
+}
+
+document.getElementById('lightboxImage').addEventListener('wheel', event => {
+  event.preventDefault();
+  const image = event.currentTarget;
+  const scale = Math.max(.25, Math.min(4, parseFloat(image.dataset.scale || '1') + (event.deltaY < 0 ? .1 : -.1)));
+  image.dataset.scale = String(scale);
+  image.style.transform = 'scale(' + scale + ')';
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeLightbox();
+});
 
 function previewMove(delta) {
   if (previewTotal === 0) return;

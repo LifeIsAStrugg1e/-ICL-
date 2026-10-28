@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import threading
 import tkinter as tk
@@ -37,12 +38,18 @@ class App:
     def _build_ui(self):
         pad = {'padx': 8, 'pady': 4}
 
-        # 红色按钮样式
+        self.root.configure(background="#f3f6fa")
         style = ttk.Style()
-        style.configure("Danger.TButton", background="#c0392b", foreground="black")
+        if "vista" in style.theme_names():
+            style.theme_use("vista")
+        style.configure("TFrame", background="#f3f6fa")
+        style.configure("TLabel", background="#f3f6fa", foreground="#202b3c")
+        style.configure("TLabelframe", background="#ffffff", foreground="#334155")
+        style.configure("TLabelframe.Label", background="#f3f6fa", foreground="#334155")
+        style.configure("Danger.TButton", background="#c93636", foreground="white")
         style.map("Danger.TButton",
-                  background=[("active", "#e74c3c"), ("disabled", "#95a5a6")],
-                  foreground=[("disabled", "#666666")])
+                  background=[("active", "#ab2525"), ("disabled", "#aeb8c6")],
+                  foreground=[("active", "white"), ("disabled", "#64748b")])
 
         # ===== mode =====
         frm_mode = ttk.LabelFrame(self.root, text="操作模式")
@@ -62,6 +69,9 @@ class App:
         frm_file.pack(fill="x", **pad)
 
         self.lst_files = tk.Listbox(frm_file, height=4, width=60)
+        self.lst_files.configure(background="#ffffff", foreground="#202b3c",
+                                 selectbackground="#dce9fb", selectforeground="#174a99",
+                                 highlightbackground="#d5deea", highlightcolor="#2563c7")
         self.lst_files.pack(side="left", fill="x", expand=True, padx=4, pady=4)
 
         frm_btn = ttk.Frame(frm_file)
@@ -150,6 +160,8 @@ class App:
 
         self.txt_log = tk.Text(frm_log, height=10, width=70, state="disabled",
                                font=("Consolas", 9))
+        self.txt_log.configure(background="#f8fafc", foreground="#245b3a",
+                               insertbackground="#202b3c", highlightbackground="#d5deea")
         scroll = ttk.Scrollbar(frm_log, command=self.txt_log.yview)
         self.txt_log.config(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
@@ -268,7 +280,7 @@ class App:
         else:
             exts = (".icl", ".ico")
         count = 0
-        for name in sorted(os.listdir(folder)):
+        for name in sorted(os.listdir(folder), key=self._natural_sort_key):
             if name.lower().endswith(exts):
                 p = os.path.join(folder, name)
                 if p not in self.input_paths:
@@ -277,6 +289,11 @@ class App:
                     count += 1
         self._log(f"从文件夹添加 {count} 个文件")
         self._update_default_output()
+
+    @staticmethod
+    def _natural_sort_key(name):
+        return [int(part) if part.isdigit() else part.casefold()
+                for part in re.split(r'(\d+)', name)]
 
     def remove_selected(self):
         sel = list(self.lst_files.curselection())
