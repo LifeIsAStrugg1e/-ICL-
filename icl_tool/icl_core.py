@@ -12,10 +12,12 @@ ICL format (GUS_3):
 import ctypes
 import os
 import struct
+import threading
 
 ICL_ICONS_MAX = 65536
 
 _dll = None
+_decode_lock = threading.Lock()
 
 
 def _load_dll():
@@ -57,15 +59,19 @@ def decode_jpg(jpg_bytes):
     Note: tjpgd outputs RGB565, we convert to RGB888.
     """
     dll = _load_dll()
-    w = ctypes.c_uint(0)
-    h = ctypes.c_uint(0)
-    buf = dll.tjpgd_decode(jpg_bytes, len(jpg_bytes), ctypes.byref(w), ctypes.byref(h))
-    if not buf:
-        return None
-    width, height = w.value, h.value
-    n = width * height
-    raw = ctypes.string_at(buf, n * 2)
-    dll.tjpgd_free(buf)
+    with _decode_lock:
+        w = ctypes.c_uint(0)
+        h = ctypes.c_uint(0)
+        buf = dll.tjpgd_decode(jpg_bytes, len(jpg_bytes), ctypes.byref(w), ctypes.byref(h))
+        if not buf:
+            return None
+        try:
+            width, height = w.value, h.value
+            if not (0 < width <= 16384 and 0 < height <= 16384):
+                return None
+            raw = ctypes.string_at(buf, width * height * 2)
+        finally:
+            dll.tjpgd_free(buf)
     import numpy as np
     arr = np.frombuffer(raw, dtype=np.uint16).astype(np.uint32)
     r = ((arr >> 11) & 0x1F) << 3
@@ -86,9 +92,12 @@ def parse_icl(data):
 
     filesize = len(data)
     count = struct.unpack('>H', data[0x0D:0x0F])[0]
+    if count == 0:
+        return []
 
     max_idx = -1
-    for i in range(min(count, ICL_ICONS_MAX)):
+    valid_count = 0
+    for i in range(ICL_ICONS_MAX):
         off = 0x10 + i * 4
         if off + 4 > filesize:
             break
@@ -98,6 +107,9 @@ def parse_icl(data):
         if addr >= filesize:
             break
         max_idx = i
+        valid_count += 1
+        if valid_count >= count:
+            break
 
     if max_idx < 0:
         return []

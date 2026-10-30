@@ -190,7 +190,9 @@ def detect_format(data):
     return None
 
 
-def extract_file(path, out_dir, fmt_out='bmp', quality=95, progress_cb=None):
+def extract_file(path, out_dir, fmt_out='bmp', quality=95, progress_cb=None,
+                 preserve_indices=True, conflict_policy='overwrite',
+                 skip_cb=None):
     """Extract images from ICL or ICO file.
 
     Args:
@@ -224,7 +226,7 @@ def extract_file(path, out_dir, fmt_out='bmp', quality=95, progress_cb=None):
 
     os.makedirs(out_dir, exist_ok=True)
     saved = 0
-    seq = 0
+    sequence = 0
     total_count = len(images)
 
     from PIL import Image
@@ -254,7 +256,20 @@ def extract_file(path, out_dir, fmt_out='bmp', quality=95, progress_cb=None):
             continue
 
         # save as requested format
-        outfile = os.path.join(out_dir, "%d.%s" % (seq, fmt_out))
+        output_index = idx if preserve_indices else sequence
+        outfile = os.path.join(out_dir, "%d.%s" % (output_index, fmt_out))
+        if os.path.exists(outfile):
+            if conflict_policy == 'skip':
+                if skip_cb:
+                    skip_cb(os.path.basename(outfile))
+                sequence += 1
+                continue
+            if conflict_policy == 'rename':
+                base = os.path.splitext(outfile)[0]
+                suffix = 2
+                while os.path.exists('%s (%d).%s' % (base, suffix, fmt_out)):
+                    suffix += 1
+                outfile = '%s (%d).%s' % (base, suffix, fmt_out)
         if fmt_out == 'jpg':
             pil.convert('RGB').save(outfile, 'JPEG', quality=quality)
         elif fmt_out == 'png':
@@ -262,7 +277,7 @@ def extract_file(path, out_dir, fmt_out='bmp', quality=95, progress_cb=None):
         else:  # bmp (default)
             pil.save(outfile, 'BMP')
         saved += 1
-        seq += 1
+        sequence += 1
 
         if progress_cb:
             try:

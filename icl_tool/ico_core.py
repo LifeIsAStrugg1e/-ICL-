@@ -1,6 +1,10 @@
 import io
 import os
 import struct
+import threading
+
+_LZO_COMPRESS_LOCK = threading.Lock()
+_LZO_DLL = None
 
 
 def get_jpg_size(data):
@@ -86,23 +90,24 @@ def _lzo_compress(data):
 
     DLL exports: lzo_compress(in, in_len, out) -> compressed_len
     """
+    global _LZO_DLL
     import ctypes
     dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lzo.dll')
     if not os.path.exists(dll_path):
         raise FileNotFoundError("lzo.dll not found: " + dll_path)
-    lzo = ctypes.CDLL(dll_path)
-
     src = ctypes.create_string_buffer(data, len(data))
     # Output buffer: worst case is slightly larger than input
     dst_size = len(data) + len(data) // 16 + 64 + 3
     dst = ctypes.create_string_buffer(dst_size)
 
-    lzo.lzo_compress.argtypes = [
-        ctypes.c_char_p, ctypes.c_uint, ctypes.c_char_p
-    ]
-    lzo.lzo_compress.restype = ctypes.c_uint
-
-    out_len = lzo.lzo_compress(src, len(data), dst)
+    with _LZO_COMPRESS_LOCK:
+        if _LZO_DLL is None:
+            _LZO_DLL = ctypes.CDLL(dll_path)
+            _LZO_DLL.lzo_compress.argtypes = [
+                ctypes.c_char_p, ctypes.c_uint, ctypes.c_char_p
+            ]
+            _LZO_DLL.lzo_compress.restype = ctypes.c_uint
+        out_len = _LZO_DLL.lzo_compress(src, len(data), dst)
     if out_len == 0:
         raise RuntimeError("LZO compress failed")
     return dst.raw[:out_len]
@@ -142,10 +147,14 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
 
     sorted_images = sorted(images, key=lambda x: x['index'])
     count = len(sorted_images)
-    header_size = 16 + count * 4  # 16-byte header + address table
+    max_index = max(img['index'] for img in sorted_images)
+    if max_index < 0 or max_index > 0xFFFF:
+        raise ValueError("image index out of range: %s" % max_index)
+    table_size = max_index + 1
+    header_size = 16 + table_size * 4  # 16-byte header + address table
     header_size = (header_size + 15) // 16 * 16
 
-    addrs = [0] * count
+    addrs = [0] * table_size
 
     with open(out_path, 'wb') as f:
         # 16-byte file header
@@ -153,7 +162,7 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
         f.write(b'\x01\x00')                       # 4-5: version?
         f.write(b'\xf3\x9c\x9f\x4e')              # 6-9: checksum? (same as working ICO)
         f.write(b'\xc3\x00')                       # 10-11: ?
-        f.write(struct.pack('<H', count))          # 12-13: count LE
+        f.write(struct.pack('<H', max_index))      # 12-13: maximum image index LE
         f.write(b'\x00\x00')                       # 14-15: pad
 
         # placeholder for address table
@@ -238,7 +247,7 @@ def pack_ico(images, out_path, fmt='rgb565', quality=90, batch_size=20, rotation
                 write_size = (len(blob) + 15) // 16 * 16
                 blob = blob.ljust(write_size, b'\x00')
 
-                addrs[i] = offset
+                addrs[img['index']] = offset
                 f.write(blob)
                 offset += write_size
 

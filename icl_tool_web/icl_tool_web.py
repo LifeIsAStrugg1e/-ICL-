@@ -84,6 +84,17 @@ def main():
     )
     api.set_window(window)
 
+    from webview.dom import DOMEventHandler
+
+    def install_file_drop():
+        document = window.dom.get_element("html")
+        document.on("dragover", DOMEventHandler(lambda event: None,
+                                                prevent_default=True))
+        document.on("drop", DOMEventHandler(api.handle_file_drop,
+                                             prevent_default=True))
+
+    window.events.loaded += install_file_drop
+
     webview.start(debug=False)
 
 

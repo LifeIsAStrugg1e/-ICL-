@@ -8,6 +8,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
+    --font-scale: 1;
     --bg: #f3f6fa;
     --bg2: #ffffff;
     --bg3: #e8eef7;
@@ -30,11 +31,11 @@
     padding: 16px;
     zoom: 85%;
     min-height: 100vh;
-    font-size: 15px;
+    font-size: calc(var(--font-scale) * 15px);
   }
 
   h1 {
-    font-size: 23px;
+    font-size: calc(var(--font-scale) * 23px);
     margin-bottom: 16px;
     color: var(--accent);
     display: flex;
@@ -51,7 +52,7 @@
     margin-bottom: 14px;
   }
   .card-title {
-    font-size: 16px;
+    font-size: calc(var(--font-scale) * 16px);
     font-weight: bold;
     color: var(--accent);
     margin-bottom: 10px;
@@ -68,7 +69,7 @@
     color: var(--text2);
     cursor: pointer;
     text-align: center;
-    font-size: 15px;
+    font-size: calc(var(--font-scale) * 15px);
     transition: all .15s;
   }
   .mode-btn:hover { border-color: var(--accent); color: var(--text); }
@@ -90,7 +91,7 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--text);
-    font-size: 15px;
+    font-size: calc(var(--font-scale) * 15px);
     padding: 6px;
     overflow-y: auto;
   }
@@ -105,7 +106,17 @@
   #fileList .fitem.sel { background: #e7f0ff; color: #174a99; }
   #fileList .empty { color: var(--text2); text-align: center; padding-top: 36px; }
 
-  .btn-col { display: flex; flex-direction: column; gap: 6px; width: 120px; }
+  .btn-col { display: flex; flex-direction: column; gap: 6px; width: max-content; min-width: 120px; }
+  .btn-col .btn { white-space: nowrap; }
+  .file-info { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  .file-info-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 5px; padding: 7px 8px; }
+  .file-info-label { color: var(--text2); font-size: calc(var(--font-scale) * 12px); }
+  .file-info-value { color: var(--text); font-size: calc(var(--font-scale) * 15px); font-weight: 600; margin-top: 2px; }
+  .drop-hint { color: var(--text2); font-size: calc(var(--font-scale) * 13px); margin-top: 8px; }
+  body.file-dragging .card:first-of-type { outline: 2px dashed var(--accent); outline-offset: -4px; }
+  .batch-summary { margin-top: 8px; color: var(--text2); font-size: calc(var(--font-scale) * 14px); }
+  .number-check { grid-column: 1 / -1; color: var(--text2); font-size: calc(var(--font-scale) * 14px); line-height: 1.5; overflow-wrap: anywhere; }
+  @media (max-width: 640px) { .file-info { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
   /* 按钮 */
   .btn {
@@ -113,7 +124,7 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 15px;
+    font-size: calc(var(--font-scale) * 15px);
     transition: all .15s;
     font-family: inherit;
   }
@@ -127,11 +138,12 @@
 
   /* 选项组 */
   .opt-group { margin-bottom: 8px; }
-  .opt-label { font-size: 15px; color: var(--text2); margin-bottom: 6px; }
+  .opt-label { font-size: calc(var(--font-scale) * 15px); color: var(--text2); margin-bottom: 6px; }
   .radio-row { display: flex; flex-wrap: wrap; gap: 14px; }
+  .format-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
   .radio-item {
     display: flex; align-items: center; gap: 5px;
-    font-size: 15px; cursor: pointer;
+    font-size: calc(var(--font-scale) * 15px); cursor: pointer;
   }
   .radio-item input { accent-color: var(--accent); }
 
@@ -149,8 +161,9 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--text);
-    font-size: 15px;
+    font-size: calc(var(--font-scale) * 15px);
   }
+  .text-input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg2); color: var(--text); font: inherit; }
   .out-row input[type=text]:focus { outline: none; border-color: var(--accent); }
 
   /* 运行区 */
@@ -159,7 +172,7 @@
     padding: 10px 32px;
     background: var(--green);
     color: #fff;
-    font-size: 15px;
+    font-size: calc(var(--font-scale) * 15px);
     font-weight: bold;
     border: none;
     border-radius: 8px;
@@ -184,7 +197,7 @@
     transition: width .3s;
     border-radius: 11px;
   }
-  .status-text { font-size: 15px; color: var(--accent); min-width: 60px; text-align: right; }
+  .status-text { font-size: calc(var(--font-scale) * 15px); color: var(--accent); min-width: 60px; text-align: right; }
 
   /* 日志 */
   #logArea {
@@ -195,7 +208,7 @@
     border-radius: 6px;
     color: #245b3a;
     font-family: Consolas, monospace;
-    font-size: 13px;
+    font-size: calc(var(--font-scale) * 13px);
     padding: 8px;
     overflow-y: auto;
     white-space: pre-wrap;
@@ -221,7 +234,9 @@
     text-align: center;
     box-shadow: 0 8px 32px rgba(31,42,58,.18);
   }
-  .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 14px; }
+  .modal-title { font-size: calc(var(--font-scale) * 17px); font-weight: 600; margin-bottom: 14px; }
+  .warning-message { color: var(--text); font-size: calc(var(--font-scale) * 14px); line-height: 1.6; text-align: left; white-space: pre-line; overflow-wrap: anywhere; margin-bottom: 16px; }
+  .warning-actions { display: flex; justify-content: flex-end; }
   .modal-progress-wrap {
     height: 8px;
     background: var(--bg);
@@ -229,12 +244,12 @@
     overflow: hidden;
     margin-bottom: 10px;
   }
-  .modal-status { font-size: 14px; color: var(--text2); }
+  .modal-status { font-size: calc(var(--font-scale) * 14px); color: var(--text2); }
 
   /* 预览 */
   .preview-row { display: flex; align-items: center; gap: 10px; }
   .pv-box { flex: 1; }
-  .pv-label { font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 4px; }
+  .pv-label { font-size: calc(var(--font-scale) * 13px); color: var(--text2); text-align: center; margin-bottom: 4px; }
   .pv-img-wrap {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -246,11 +261,11 @@
     overflow: hidden;
   }
   .pv-img-wrap img { max-width: 100%; max-height: 100%; }
-  .pv-placeholder { color: var(--text2); font-size: 14px; line-height: 1.5; text-align: center; padding: 12px; }
+  .pv-placeholder { color: var(--text2); font-size: calc(var(--font-scale) * 14px); line-height: 1.5; text-align: center; padding: 12px; }
   .pv-arrow { font-size: 26px; color: var(--accent); padding-top: 16px; }
   .pv-nav { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-  .pv-info { font-size: 14px; color: var(--accent); min-width: 80px; text-align: center; }
-  .pv-hint { font-size: 13px; color: var(--text2); margin-left: auto; }
+  .pv-info { font-size: calc(var(--font-scale) * 14px); color: var(--accent); min-width: 80px; text-align: center; }
+  .pv-hint { font-size: calc(var(--font-scale) * 13px); color: var(--text2); margin-left: auto; }
   .pv-img-wrap img { cursor: zoom-in; }
 
   /* 大图查看 */
@@ -264,7 +279,7 @@
     position: relative; max-width: 94vw; max-height: 94vh;
     display: flex; flex-direction: column; align-items: center; gap: 8px;
   }
-  .lightbox-title { color: #fff; font-size: 16px; }
+  .lightbox-title { color: #fff; font-size: calc(var(--font-scale) * 16px); }
   .lightbox-image-wrap { overflow: auto; max-width: 94vw; max-height: 88vh; }
   .lightbox-image { display: block; max-width: none; transform-origin: center center; cursor: zoom-out; }
   .lightbox-close {
@@ -272,11 +287,46 @@
     width: 34px; height: 34px; border: 0; border-radius: 50%;
     background: #fff; color: #334155; font-size: 22px; cursor: pointer;
   }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .topbar h1 { margin: 0; }
+  .settings-toggle { min-width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); font-size: 21px; cursor: pointer; }
+  .settings-heading { display: flex; align-items: center; justify-content: space-between; font-size: calc(var(--font-scale) * 16px); font-weight: 600; color: var(--accent); margin-bottom: 16px; }
+  .settings-close { border: 0; background: transparent; color: var(--text2); font-size: 22px; cursor: pointer; }
+  .settings-control { display: flex; align-items: center; gap: 12px; }
+  .settings-control input { flex: 1; accent-color: var(--accent); }
+  .settings-size { min-width: 48px; text-align: right; font-weight: 600; color: var(--accent); }
+  .settings-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+  .settings-dialog { width: min(440px, calc(100vw - 32px)); text-align: left; }
+  .font-large .modes { flex-wrap: wrap; }
+  .font-large .mode-btn { min-width: calc(50% - 6px); }
+  .font-large .file-row { flex-wrap: wrap; }
+  .font-large .file-list-wrap { flex-basis: 100%; min-width: 0; }
+  .font-large .btn-col { width: 100%; min-width: 0; flex-direction: row; flex-wrap: wrap; }
+  .font-large .btn-col .btn { flex: 1 1 140px; }
+  .font-large .format-grid { grid-template-columns: minmax(0, 1fr); }
+  .font-large .out-row, .font-large .run-row, .font-large .pv-nav { flex-wrap: wrap; }
+  .font-large .pv-hint { margin-left: 0; }
+  .font-large .status-text { margin-left: auto; }
 </style>
 </head>
 <body>
 
-<h1>🗂️ ICL/ICO 图片工具</h1>
+<div class="topbar">
+  <h1>🗂️ ICL/ICO 图片工具</h1>
+  <button class="settings-toggle" onclick="toggleSettings()" title="设置" aria-label="设置">⚙</button>
+</div>
+
+<div class="modal-mask hidden" id="settingsModal" onclick="closeSettingsBackdrop(event)" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal-box settings-dialog" onclick="event.stopPropagation()">
+    <div class="settings-heading"><span id="settingsTitle">设置</span><button class="settings-close" onclick="toggleSettings(false)" aria-label="关闭">×</button></div>
+    <label class="opt-label" for="fontSizeSetting">界面文字大小</label>
+    <div class="settings-control">
+      <input id="fontSizeSetting" type="range" min="13" max="21" step="1" value="15">
+      <span class="settings-size" id="fontSizeValue">15 px</span>
+    </div>
+    <div class="settings-actions"><button class="btn btn-primary" onclick="saveSettings()">保存设置</button></div>
+  </div>
+</div>
 
 <!-- 模式 -->
 <div class="card">
@@ -308,6 +358,14 @@
       <button class="btn btn-danger" onclick="clearFiles()">清空</button>
     </div>
   </div>
+  <div class="drop-hint">拖入图片、ICL 或 ICO 文件即可自动识别并添加</div>
+  <div class="opt-label">输入文件信息</div>
+  <div class="file-info" id="fileInfo">
+    <div class="file-info-item"><div class="file-info-label">文件数</div><div class="file-info-value" id="infoFiles">0</div></div>
+    <div class="file-info-item"><div class="file-info-label">图片数</div><div class="file-info-value" id="infoImages">0</div></div>
+    <div class="file-info-item"><div class="file-info-label">尺寸</div><div class="file-info-value" id="infoDimensions">-</div></div>
+    <div class="number-check" id="numberCheck">编号预检：暂无文件</div>
+  </div>
 </div>
 
 <!-- 输出格式 -->
@@ -327,7 +385,7 @@
   <div id="packOpts" class="hidden">
     <div class="opt-group">
       <div class="opt-label">压缩格式</div>
-      <div class="radio-row">
+      <div class="format-grid">
         <label class="radio-item"><input type="radio" name="compFmt" value="rgb565" checked> RGB565 16-bit 无损（C工具兼容）</label>
         <label class="radio-item"><input type="radio" name="compFmt" value="rgb24"> RGB24 24-bit 无损（BGRA）</label>
         <label class="radio-item"><input type="radio" name="compFmt" value="jpg"> JPG 24-bit 有损压缩</label>
@@ -344,10 +402,16 @@
       <div class="opt-label">旋转</div>
       <div class="radio-row">
         <label class="radio-item"><input type="radio" name="rot" value="0" checked> 不旋转</label>
-        <label class="radio-item"><input type="radio" name="rot" value="90"> 90°</label>
-        <label class="radio-item"><input type="radio" name="rot" value="180"> 180°</label>
-        <label class="radio-item"><input type="radio" name="rot" value="270"> 270°</label>
+        <label class="radio-item"><input type="radio" name="rot" value="90"> 逆时针 90°</label>
+        <label class="radio-item"><input type="radio" name="rot" value="180"> 逆时针 180°</label>
+        <label class="radio-item"><input type="radio" name="rot" value="270"> 逆时针 270°</label>
       </div>
+    </div>
+    <div class="opt-label">输出文件信息</div>
+    <div class="file-info" id="outputInfo">
+      <div class="file-info-item"><div class="file-info-label">图片数</div><div class="file-info-value" id="outputImages">0</div></div>
+      <div class="file-info-item"><div class="file-info-label">尺寸</div><div class="file-info-value" id="outputDimensions">-</div></div>
+      <div class="file-info-item"><div class="file-info-label">预计 ICO（精确）</div><div class="file-info-value" id="infoEstimate">-</div></div>
     </div>
   </div>
 </div>
@@ -379,9 +443,10 @@
   <div class="card-title">输出路径</div>
   <div class="opt-label" id="outLabel">输出文件夹</div>
   <div class="out-row">
-    <input type="text" id="outPath" placeholder="选择输出路径...">
+    <input type="text" id="outPath" placeholder="选择输出路径..." onchange="autoOut = ''">
     <button class="btn btn-primary" onclick="selectOutput()">浏览...</button>
   </div>
+  <div class="batch-summary hidden" id="batchSummary"></div>
 </div>
 
 <!-- 运行 -->
@@ -397,6 +462,15 @@
 <div class="card">
   <div class="card-title">日志</div>
   <div id="logArea"></div>
+</div>
+
+<!-- 图片编号冲突提醒 -->
+<div class="modal-mask hidden" id="duplicateNumberModal" role="alertdialog" aria-modal="true" aria-labelledby="duplicateNumberTitle">
+  <div class="modal-box">
+    <div class="modal-title" id="duplicateNumberTitle">图片编号需要检查</div>
+    <div class="warning-message" id="duplicateNumberMessage"></div>
+    <div class="warning-actions"><button class="btn btn-primary" onclick="closeDuplicateNumberWarning()">我知道了</button></div>
+  </div>
 </div>
 
 <!-- 转换中模态弹窗 -->
@@ -430,12 +504,46 @@ let pollTimer = null;
 let previewIndex = 0;
 let previewTotal = 0;
 let previewTimer = null;
+let infoTimer = null;
 let autoOut = '';   // 自动生成的输出路径（用于判断用户是否手改）
+let dropTarget = null;
+const fileNameCollator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
 
 // ===== pywebview 就绪 =====
 function ready(fn) {
   if (window.pywebview && window.pywebview.api) fn();
   else window.addEventListener('pywebviewready', fn);
+}
+
+function applyFontSize(size) {
+  const value = Math.max(13, Math.min(21, parseInt(size, 10) || 15));
+  const root = document.documentElement;
+  root.style.setProperty('--font-scale', String(value / 15));
+  root.classList.toggle('font-large', value >= 18);
+  document.getElementById('fontSizeSetting').value = String(value);
+  document.getElementById('fontSizeValue').textContent = value + ' px';
+}
+
+function toggleSettings(forceOpen) {
+  const modal = document.getElementById('settingsModal');
+  const open = typeof forceOpen === 'boolean' ? forceOpen : modal.classList.contains('hidden');
+  modal.classList.toggle('hidden', !open);
+}
+
+function closeSettingsBackdrop(event) {
+  if (event.target === event.currentTarget) toggleSettings(false);
+}
+
+async function saveSettings() {
+  const result = await pywebview.api.save_settings({
+    font_size: parseInt(document.getElementById('fontSizeSetting').value, 10)
+  });
+  if (!result || !result.ok) {
+    alert(result && result.message || '设置保存失败');
+    return;
+  }
+  applyFontSize(result.font_size);
+  toggleSettings(false);
 }
 
 // ===== 模式切换 =====
@@ -448,7 +556,7 @@ function setMode(mode) {
   const isExtract = mode === 'extract';
   document.getElementById('extractOpts').classList.toggle('hidden', !isExtract);
   document.getElementById('packOpts').classList.toggle('hidden', isExtract);
-  document.getElementById('outLabel').textContent = isExtract ? '输出文件夹' : '输出 ICO 文件';
+  updateOutputControls();
 
   // 按钮显示: 图片压缩仅"添加文件夹"; 解压/打包仅"添加文件"
   const isImg2ico = (mode === 'img2ico');
@@ -485,13 +593,7 @@ function showQuality() {
 async function addFiles() {
   const paths = await pywebview.api.select_files(currentMode);
   if (!paths || !paths.length) return;
-  for (const p of paths) {
-    if (!files.find(f => f.path === p)) {
-      files.push({ path: p, name: p.replace(/\//g, '\\').split('\\').pop() });
-    }
-  }
-  renderFiles();
-  updateDefaultOutput();
+  await addDroppedPaths(paths, false);
 }
 
 async function addFolder() {
@@ -502,13 +604,161 @@ async function addFolder() {
     : ['.icl', '.ico'];
   const paths = await pywebview.api.list_files(folder, exts);
   if (!paths || !paths.length) return;
-  for (const p of paths) {
-    if (!files.find(f => f.path === p)) {
-      files.push({ path: p, name: p.replace(/\//g, '\\').split('\\').pop() });
+  await addDroppedPaths(paths, false);
+}
+
+function updateOutputControls() {
+  const batch = currentMode === 'pack' && files.length > 1;
+  const label = document.getElementById('outLabel');
+  const input = document.getElementById('outPath');
+  label.textContent = currentMode === 'extract' ? '输出文件夹'
+    : batch ? '批量 ICO 输出文件夹' : '输出 ICO 文件';
+  input.placeholder = batch ? '选择批量输出文件夹...' : '选择输出路径...';
+  document.getElementById('batchSummary').classList.toggle('hidden', !batch);
+}
+
+async function addDroppedPaths(paths, autoDetect) {
+  const supported = paths.map(path => ({path, ext: path.split('.').pop().toLowerCase()}))
+    .filter(item => ['icl', 'ico', 'jpg', 'jpeg', 'png', 'bmp'].includes(item.ext));
+  if (!supported.length) return;
+
+  if (autoDetect) {
+    const acceptedInCurrentMode = currentMode === 'img2ico'
+      ? ['jpg', 'jpeg', 'png', 'bmp'] : ['icl', 'ico'];
+    const hasCurrentModeMatch = supported.some(item => acceptedInCurrentMode.includes(item.ext));
+    if (!hasCurrentModeMatch) {
+      const first = supported[0].ext;
+      const nextMode = first === 'icl' ? 'pack'
+        : first === 'ico' ? 'extract' : 'img2ico';
+      if (nextMode !== currentMode) setMode(nextMode);
     }
   }
+
+  const expected = currentMode === 'pack' ? ['icl', 'ico']
+    : currentMode === 'extract' ? ['icl', 'ico'] : ['jpg', 'jpeg', 'png', 'bmp'];
+  const mismatched = supported.filter(item => !expected.includes(item.ext));
+  if (mismatched.length) {
+    alert('当前模式不接受以下文件类型，已跳过：\n' + mismatched.map(item => item.path.split(/[\\/]/).pop()).join('\n'));
+  }
+
+  let filesToAdd = supported.filter(item => expected.includes(item.ext)
+    && !files.find(file => file.path === item.path));
+  if (currentMode === 'img2ico' && filesToAdd.length) {
+    filesToAdd = filterNumberConflicts(filesToAdd);
+  }
+
+  const addedPaths = [];
+  for (const item of filesToAdd) {
+    files.push({path: item.path, name: item.path.replace(/\//g, '\\').split('\\').pop()});
+    addedPaths.push(item.path);
+  }
+  files.sort((left, right) => fileNameCollator.compare(left.name, right.name)
+    || left.name.localeCompare(right.name)
+    || left.path.localeCompare(right.path));
   renderFiles();
-  updateDefaultOutput();
+  updateOutputControls();
+  await updateDefaultOutput();
+}
+
+function filterNumberConflicts(incoming) {
+  const acceptedIndexes = new Set();
+  const existingIndexes = new Set();
+  const rejected = [];
+  const incomingGroups = new Map();
+  const invalidIncoming = [];
+  files.forEach(file => {
+    const stem = file.name.replace(/\.[^.]*$/, '');
+    if (/^\d+$/.test(stem)) existingIndexes.add(stem.replace(/^0+(?=\d)/, ''));
+  });
+
+  incoming.forEach(item => {
+    const name = item.path.replace(/\//g, '\\').split('\\').pop();
+    const stem = name.replace(/\.[^.]*$/, '');
+    if (!/^\d+$/.test(stem)) {
+      invalidIncoming.push(name);
+      return;
+    }
+    const index = stem.replace(/^0+(?=\d)/, '');
+    if (!incomingGroups.has(index)) incomingGroups.set(index, []);
+    incomingGroups.get(index).push(name);
+  });
+
+  const batchDuplicates = Array.from(incomingGroups.entries())
+    .filter(([, names]) => names.length > 1);
+  if (batchDuplicates.length || invalidIncoming.length) {
+    const duplicateLines = batchDuplicates.map(([index, names]) =>
+      '编号 ' + index + '：' + names.join('、'));
+    const batchIssues = [];
+    if (invalidIncoming.length) {
+      batchIssues.push('编号格式异常（必须为纯数字）：' + invalidIncoming.join('、'));
+    }
+    if (duplicateLines.length) {
+      batchIssues.push('重复编号：\n' + duplicateLines.join('\n'));
+    }
+    showNumberConflictWarning(incoming.map(item => ({
+      name: item.path.replace(/\//g, '\\').split('\\').pop(),
+      reason: '本次导入批次存在编号问题'
+    })), true, batchIssues);
+    return [];
+  }
+
+  const accepted = [];
+  incoming.forEach(item => {
+    const name = item.path.replace(/\//g, '\\').split('\\').pop();
+    const stem = name.replace(/\.[^.]*$/, '');
+    if (!/^\d+$/.test(stem)) {
+      rejected.push({name, reason: '编号只能是纯数字，不允许空格或符号'});
+      return;
+    }
+    const index = stem.replace(/^0+(?=\d)/, '');
+    if (existingIndexes.has(index) || acceptedIndexes.has(index)) {
+      rejected.push({name, reason: '编号 ' + index + ' 已存在'});
+      return;
+    }
+    acceptedIndexes.add(index);
+    accepted.push(item);
+  });
+
+  if (rejected.length) showNumberConflictWarning(rejected, false);
+  return accepted;
+}
+
+function showNumberConflictWarning(rejected, rejectBatch, batchIssues) {
+  const lines = rejected.slice(0, 12).map(item => item.name + '：' + item.reason);
+  document.getElementById('duplicateNumberMessage').textContent =
+    (rejectBatch
+      ? '本次导入批次有重复编号，整批图片均未加入输入列表。请检查后重新添加：\n'
+      : '以下图片未加入输入列表，避免工程底图编号错乱。请检查文件编号后重新添加：\n') +
+    (batchIssues && batchIssues.length
+      ? '\n' + batchIssues.join('\n') + '\n'
+      : '') +
+    lines.join('\n') + (rejected.length > 12 ? '\n……另有 ' + (rejected.length - 12) + ' 个文件未加入' : '');
+  document.getElementById('duplicateNumberModal').classList.remove('hidden');
+}
+
+function closeDuplicateNumberWarning() {
+  document.getElementById('duplicateNumberModal').classList.add('hidden');
+}
+
+window.handleDroppedPaths = function(paths) {
+  if (!paths || !paths.length) return;
+  addDroppedPaths(paths, true);
+};
+
+function initFileDrop() {
+  const root = document.documentElement;
+  root.addEventListener('dragenter', event => {
+    event.preventDefault();
+    document.body.classList.add('file-dragging');
+  });
+  root.addEventListener('dragover', event => event.preventDefault());
+  root.addEventListener('dragleave', event => {
+    if (!event.relatedTarget) document.body.classList.remove('file-dragging');
+  });
+  root.addEventListener('drop', event => {
+    event.preventDefault();
+    document.body.classList.remove('file-dragging');
+  });
 }
 
 function removeSelected() {
@@ -537,6 +787,81 @@ function renderFiles() {
        </div>`).join('');
   }
   if (currentMode !== 'extract') refreshPreviewCount();
+  refreshFileInfo();
+  refreshNumberingCheck();
+  updateOutputControls();
+}
+
+function compactNumbers(values) {
+  if (!values || !values.length) return '无';
+  const sorted = Array.from(new Set(values)).sort((a, b) => a - b);
+  const ranges = [];
+  let start = sorted[0], end = sorted[0];
+  for (const value of sorted.slice(1)) {
+    if (value === end + 1) end = value;
+    else { ranges.push(start === end ? String(start) : start + '-' + end); start = end = value; }
+  }
+  ranges.push(start === end ? String(start) : start + '-' + end);
+  return ranges.join(', ');
+}
+
+async function refreshNumberingCheck() {
+  const el = document.getElementById('numberCheck');
+  if (!files.length) { el.textContent = '编号预检：暂无文件'; return; }
+  const result = await pywebview.api.get_numbering_info(files.map(file => file.path), currentMode);
+  if (!result || !result.ok) { el.textContent = '编号预检：读取失败'; return; }
+  el.textContent = '编号预检：' + result.checks.map(check => {
+    let indexesText = compactNumbers(check.indices);
+    if (check.index_count > check.indices.length) indexesText += ' …共' + check.index_count + '项';
+    let text = check.file + ' [' + indexesText + ']';
+    if (check.missing.length) text += '，缺号 ' + compactNumbers(check.missing);
+    if (check.missing_count > check.missing.length) text += ' …共缺' + check.missing_count + '项';
+    if (check.duplicates.length) text += '，重复 ' + compactNumbers(check.duplicates);
+    if (check.invalid.length) text += '，超范围 ' + compactNumbers(check.invalid);
+    return text;
+  }).join('；');
+}
+
+function formatBytes(value) {
+  if (!value) return '0 B';
+  if (value < 1024) return value + ' B';
+  if (value < 1024 * 1024) return (value / 1024).toFixed(1) + ' KB';
+  return (value / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+async function refreshFileInfo() {
+  const info = {file_count: 0, image_count: 0, dimensions: [], output_dimensions: [], estimated_bytes: 0};
+  if (files.length) {
+    const fmtInput = document.querySelector('input[name=compFmt]:checked');
+    const qualityInput = document.getElementById('qualitySlider');
+    const rotationInput = document.querySelector('input[name=rot]:checked');
+    const fmt = fmtInput ? fmtInput.value : 'rgb565';
+    const q = parseInt(qualityInput ? qualityInput.value : '90');
+    const rot = parseInt(rotationInput ? rotationInput.value : '0');
+    try {
+      const result = await pywebview.api.get_file_info(files.map(f => f.path), fmt, q, rot);
+      if (result && result.ok) Object.assign(info, result);
+      else if (result && result.message) throw new Error(result.message);
+    } catch (error) {
+      document.getElementById('infoDimensions').textContent = error.message || '读取失败';
+      document.getElementById('outputImages').textContent = '计算失败';
+      document.getElementById('outputDimensions').textContent = '计算失败';
+      document.getElementById('infoEstimate').textContent = '计算失败';
+      return;
+    }
+  }
+  document.getElementById('infoFiles').textContent = info.file_count;
+  document.getElementById('infoImages').textContent = info.image_count;
+  const dimensionText = info.dimensions.length
+    ? info.dimensions.map(d => d[0] + '×' + d[1]).join(', ') + (info.more_dimensions ? ' ...' : '')
+    : '-';
+  document.getElementById('infoDimensions').textContent = dimensionText;
+  const outputDimensionText = info.output_dimensions.length
+    ? info.output_dimensions.map(d => d[0] + '×' + d[1]).join(', ') + (info.more_output_dimensions ? ' ...' : '')
+    : '-';
+  document.getElementById('outputImages').textContent = currentMode === 'extract' ? '不适用' : info.image_count;
+  document.getElementById('outputDimensions').textContent = currentMode === 'extract' ? '不适用' : outputDimensionText;
+  document.getElementById('infoEstimate').textContent = currentMode === 'extract' ? '不适用' : formatBytes(info.estimated_bytes);
 }
 
 function selectFile(i) {
@@ -554,14 +879,16 @@ async function updateDefaultOutput() {
   // 用户手动改过 → 不覆盖
   if (el.value && el.value !== autoOut) return;
   // 路径计算交给 Python 端（归一化处理 / 和 \ 混用）
-  const p = await pywebview.api.get_default_output(files[0].path, currentMode);
+  const batch = currentMode === 'pack' && files.length > 1;
+  const p = await pywebview.api.get_default_output(files[0].path, currentMode, batch);
   el.value = p || '';
   autoOut = p || '';
 }
 
 // ===== 输出路径 =====
 async function selectOutput() {
-  const p = await pywebview.api.select_output(currentMode);
+  const batch = currentMode === 'pack' && files.length > 1;
+  const p = await pywebview.api.select_output(currentMode, batch);
   if (p) document.getElementById('outPath').value = p;
 }
 
@@ -573,15 +900,22 @@ async function startTask() {
   if (!out) { alert('请选择输出路径'); return; }
 
   const mode = currentMode;
+  const numbering = await pywebview.api.get_numbering_info(files.map(f => f.path), mode);
+  if (!numbering || !numbering.ok) { alert(numbering && numbering.message || '编号预检失败'); return; }
+  const invalid = numbering.checks.some(check => check.invalid.length ||
+    (mode !== 'extract' && check.duplicates.length));
+  if (invalid) { alert('编号预检发现超范围或重复编号，请先修正输入文件'); return; }
   const outFmt = mode === 'extract'
     ? document.querySelector('input[name=extFmt]:checked').value
     : 'ico';
   const compFmt = document.querySelector('input[name=compFmt]:checked').value;
   const quality = parseInt(document.getElementById('qualitySlider').value);
   const rotation = parseInt(document.querySelector('input[name=rot]:checked').value);
+  const preserveIndices = true;
 
   const res = await pywebview.api.run_task(
-    mode, files.map(f => f.path), out, outFmt, compFmt, quality, rotation
+    mode, files.map(f => f.path), out, outFmt, compFmt, quality, rotation,
+    'overwrite', preserveIndices
   );
 
   if (!res.ok) { alert(res.message); return; }
@@ -596,6 +930,7 @@ async function startTask() {
   document.getElementById('modalProgressBar').style.width = '0%';
   document.getElementById('modalStatus').textContent = '准备中...';
   document.getElementById('busyModal').classList.remove('hidden');
+  document.getElementById('batchSummary').textContent = '';
 
   startPoll();
 }
@@ -622,6 +957,12 @@ function startPoll() {
       isRunning = false;
       document.getElementById('btnStart').disabled = false;
       document.getElementById('busyModal').classList.add('hidden');
+      const summary = st.status.match(/成功 (\d+)，失败 (\d+)，跳过 (\d+)/);
+      if (summary) {
+        const el = document.getElementById('batchSummary');
+        el.textContent = '批量结果：成功 ' + summary[1] + '，失败 ' + summary[2] + '，跳过 ' + summary[3];
+        el.classList.remove('hidden');
+      }
     }
   }, 400);
 }
@@ -658,10 +999,15 @@ async function refreshPreview() {
   const q = parseInt(document.getElementById('qualitySlider').value);
 
   let res;
-  if (currentMode === 'pack') {
-    res = await pywebview.api.get_preview(files[0].path, previewIndex, fmt, rot, q);
-  } else {
-    res = await pywebview.api.get_preview(files[previewIndex].path, 0, fmt, rot, q);
+  try {
+    if (currentMode === 'pack') {
+      res = await pywebview.api.get_preview(files[0].path, previewIndex, fmt, rot, q);
+    } else {
+      res = await pywebview.api.get_preview(files[previewIndex].path, 0, fmt, rot, q);
+    }
+  } catch (error) {
+    document.getElementById('pvInfo').textContent = error.message || '预览请求失败';
+    return;
   }
 
   if (res.ok) {
@@ -676,7 +1022,7 @@ async function refreshPreview() {
     document.getElementById('pvArrow').textContent = '→';
     document.getElementById('pvInfo').textContent =
       '第 ' + (previewIndex + 1) + ' / ' + previewTotal + ' 张';
-    const rotTxt = rot ? rot + '°' : '不旋转';
+    const rotTxt = rot ? '逆时针 ' + rot + '°' : '不旋转';
     const fmtTxt = {rgb565: 'RGB565', rgb24: 'RGB24', jpg: 'JPG q=' + q}[fmt];
     document.getElementById('pvHint').textContent = fmtTxt + ' · ' + rotTxt;
   } else {
@@ -718,6 +1064,7 @@ document.getElementById('lightboxImage').addEventListener('wheel', event => {
 
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') closeLightbox();
+  if (event.key === 'Escape') toggleSettings(false);
 });
 
 function previewMove(delta) {
@@ -739,6 +1086,19 @@ document.querySelectorAll('input[name=rot]').forEach(r =>
 document.querySelectorAll('input[name=compFmt]').forEach(r =>
   r.addEventListener('change', schedulePreviewRefresh));
 document.getElementById('qualitySlider').addEventListener('input', schedulePreviewRefresh);
+document.getElementById('qualitySlider').addEventListener('input', scheduleFileInfoRefresh);
+document.querySelectorAll('input[name=compFmt]').forEach(r =>
+  r.addEventListener('change', refreshFileInfo));
+document.querySelectorAll('input[name=rot]').forEach(r =>
+  r.addEventListener('change', refreshFileInfo));
+
+function scheduleFileInfoRefresh() {
+  if (infoTimer) clearTimeout(infoTimer);
+  infoTimer = setTimeout(() => {
+    infoTimer = null;
+    refreshFileInfo();
+  }, 250);
+}
 
 // ===== 回调（可选，轮询为主） =====
 window.__onLog = function(msg) {};
@@ -747,7 +1107,17 @@ window.__onStatus = function(msg) {};
 
 // ===== 初始化 =====
 ready(() => {
+  document.getElementById('fontSizeSetting').addEventListener('input', event =>
+    applyFontSize(event.target.value));
+  initFileDrop();
   setMode('extract');
+  try {
+    pywebview.api.get_settings().then(settings => {
+      if (settings && settings.ok) applyFontSize(settings.font_size);
+    }).catch(error => console.warn('无法加载界面设置:', error));
+  } catch (error) {
+    console.warn('无法加载界面设置:', error);
+  }
 });
 </script>
 </body>

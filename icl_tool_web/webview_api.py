@@ -3,6 +3,7 @@
 前端 JS 调用 pywebview.api.xxx() → 这里执行核心逻辑 → 返回结果
 """
 import os
+import json
 import re
 import sys
 import threading
@@ -13,8 +14,45 @@ if _CORE not in sys.path:
     sys.path.insert(0, _CORE)
 
 from icl_core import parse_icl, decode_jpg
-from ico_core import pack_ico
+from ico_core import (pack_ico, _load_pil_image, _image_to_rgb565,
+                       _lzo_compress)
 from extract import extract_file, detect_format, extract_ico
+
+
+def _source_image_indexes(paths):
+    """保留纯数字图片文件名中的编号，其他名称顺序补齐空闲编号。"""
+    indexes = []
+    used = set()
+    for path in paths:
+        stem = os.path.splitext(os.path.basename(path))[0]
+        index = int(stem) if stem.isdigit() else None
+        indexes.append(index)
+        if index is not None:
+            used.add(index)
+
+    next_index = 0
+    for position, index in enumerate(indexes):
+        if index is not None:
+            continue
+        while next_index in used:
+            next_index += 1
+        indexes[position] = next_index
+        used.add(next_index)
+    return indexes
+
+
+def _resolve_conflict(path, policy):
+    if not os.path.exists(path) or policy == 'overwrite':
+        return path
+    if policy == 'skip':
+        return None
+    root, ext = os.path.splitext(path)
+    suffix = 2
+    candidate = '%s (%d)%s' % (root, suffix, ext)
+    while os.path.exists(candidate):
+        suffix += 1
+        candidate = '%s (%d)%s' % (root, suffix, ext)
+    return candidate
 
 
 class Api:
@@ -23,6 +61,7 @@ class Api:
     def __init__(self):
         self._window = None
         self._running = False
+        self._file_info_lock = threading.Lock()
         # 进度状态
         self.progress = 0
         self.status = "就绪"
@@ -30,6 +69,53 @@ class Api:
 
     def set_window(self, window):
         self._window = window
+
+    def get_settings(self):
+        """读取当前用户的界面设置。"""
+        settings_path = self._settings_path()
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as settings_file:
+                settings = json.load(settings_file)
+            font_size = int(settings.get('font_size', 15))
+            if font_size < 13 or font_size > 21:
+                font_size = 15
+            return {'ok': True, 'font_size': font_size}
+        except (IOError, ValueError, TypeError):
+            return {'ok': True, 'font_size': 15}
+
+    def save_settings(self, settings):
+        """保存当前用户的界面设置，不写入程序目录。"""
+        try:
+            font_size = int(settings.get('font_size', 15))
+            if font_size < 13 or font_size > 21:
+                return {'ok': False, 'message': '文字大小必须在 13 到 21 之间'}
+            settings_path = self._settings_path()
+            folder = os.path.dirname(settings_path)
+            if not os.path.isdir(folder):
+                os.makedirs(folder)
+            with open(settings_path, 'w', encoding='utf-8') as settings_file:
+                json.dump({'font_size': font_size}, settings_file,
+                          ensure_ascii=False, indent=2)
+            return {'ok': True, 'font_size': font_size}
+        except Exception as e:
+            return {'ok': False, 'message': str(e)}
+
+    @staticmethod
+    def _settings_path():
+        app_data = os.environ.get('APPDATA')
+        if not app_data:
+            app_data = os.path.join(os.path.expanduser('~'), 'AppData', 'Roaming')
+        return os.path.join(app_data, 'ICL_ICO_Tool', 'settings.json')
+
+    def handle_file_drop(self, event):
+        paths = [item.get('pywebviewFullPath') for item in
+                 event.get('dataTransfer', {}).get('files', [])
+                 if item.get('pywebviewFullPath')]
+        if self._window and paths:
+            import json
+            self._window.evaluate_js(
+                'window.handleDroppedPaths(%s)' % json.dumps(paths)
+            )
 
     def _log(self, msg):
         """追加日志并推送到前端"""
@@ -108,7 +194,7 @@ class Api:
             root.destroy()
         return p or ""
 
-    def get_default_output(self, first_path, mode):
+    def get_default_output(self, first_path, mode, batch=False):
         """计算默认输出路径（Python 端归一化，兼容 / 和 \ 混用）
 
         Args:
@@ -117,9 +203,15 @@ class Api:
         Returns: 归一化后的输出路径
         """
         try:
-            d = os.path.normpath(os.path.dirname(os.path.normpath(first_path)))
+            input_path = os.path.normpath(first_path)
+            d = os.path.normpath(os.path.dirname(input_path))
             if mode == 'extract':
                 return os.path.join(d, 'extracted')
+            if mode == 'pack' and batch:
+                return os.path.join(d, 'packed')
+            if mode == 'img2ico':
+                folder_name = os.path.basename(d)
+                return os.path.join(d, folder_name + '.ico')
             base = os.path.splitext(os.path.basename(first_path))[0]
             return os.path.join(d, base + '.ico')
         except Exception:
@@ -148,7 +240,7 @@ class Api:
         return [int(part) if part.isdigit() else part.casefold()
                 for part in re.split(r'(\d+)', name)]
 
-    def select_output(self, mode):
+    def select_output(self, mode, batch=False):
         """打开输出路径选择
 
         Args:
@@ -160,7 +252,7 @@ class Api:
         root.withdraw()
         root.attributes("-topmost", True)
         try:
-            if mode == "extract":
+            if mode == "extract" or (mode == "pack" and batch):
                 p = filedialog.askdirectory(title="选择输出文件夹")
             else:
                 p = filedialog.asksaveasfilename(
@@ -174,7 +266,8 @@ class Api:
     # ---- 任务执行 ----
 
     def run_task(self, mode, input_paths, output_path,
-                 output_format, comp_fmt, quality, rotation):
+                 output_format, comp_fmt, quality, rotation,
+                 conflict_policy='overwrite', preserve_indices=True):
         """启动任务（异步）
 
         Args:
@@ -194,9 +287,12 @@ class Api:
             return {"ok": False, "message": "请先添加文件"}
         if not output_path:
             return {"ok": False, "message": "请选择输出路径"}
+        if conflict_policy not in ('skip', 'overwrite', 'rename'):
+            return {"ok": False, "message": "无效的冲突处理方式"}
 
         # 自动补 .ico
-        if mode in ("pack", "img2ico") and not output_path.lower().endswith(".ico"):
+        batch_pack = mode == 'pack' and len(input_paths) > 1
+        if mode in ("pack", "img2ico") and not batch_pack and not output_path.lower().endswith(".ico"):
             output_path += ".ico"
 
         self._running = True
@@ -208,7 +304,8 @@ class Api:
         threading.Thread(
             target=self._worker,
             args=(mode, list(input_paths), output_path,
-                  output_format, comp_fmt, int(quality), int(rotation)),
+                  output_format, comp_fmt, int(quality), int(rotation),
+                  conflict_policy, bool(preserve_indices)),
             daemon=True,
         ).start()
 
@@ -225,14 +322,22 @@ class Api:
 
     # ---- 后台工作 ----
 
-    def _worker(self, mode, paths, out_path, out_fmt, comp_fmt, q, rot):
+    def _worker(self, mode, paths, out_path, out_fmt, comp_fmt, q, rot,
+                conflict_policy, preserve_indices):
         try:
             if mode == "extract":
-                self._do_extract(paths, out_path, out_fmt)
+                result = self._do_extract(paths, out_path, out_fmt,
+                                          conflict_policy, preserve_indices)
             elif mode == "img2ico":
-                self._do_img2ico(paths, out_path, comp_fmt, q, rot)
+                result = self._do_img2ico(paths, out_path, comp_fmt, q, rot,
+                                          conflict_policy)
             else:
-                self._do_pack(paths, out_path, comp_fmt, q, rot)
+                result = self._do_pack(paths, out_path, comp_fmt, q, rot,
+                                       conflict_policy)
+            if result:
+                self._status("完成：成功 %d，失败 %d，跳过 %d" % result)
+                self._progress(100)
+                return
             self._status("完成")
             self._progress(100)
             self._log("任务完成")
@@ -242,11 +347,14 @@ class Api:
         finally:
             self._running = False
 
-    def _do_extract(self, paths, out_dir, fmt):
+    def _do_extract(self, paths, out_dir, fmt, conflict_policy='overwrite',
+                    preserve_indices=True):
         """解压提取"""
         quality = 100
         total = len(paths)
         total_images = 0
+        failed = 0
+        skipped = 0
 
         for fi, path in enumerate(paths):
             base = os.path.splitext(os.path.basename(path))[0]
@@ -262,23 +370,34 @@ class Api:
                 self._status("%d%%" % int(pct))
 
             try:
+                def _skip(name):
+                    nonlocal skipped
+                    skipped += 1
+                    self._log("    跳过已存在文件: %s" % name)
+
                 count, file_fmt = extract_file(path, sub_dir,
                                                fmt_out=fmt, quality=quality,
-                                               progress_cb=_cb)
+                                               progress_cb=_cb,
+                                               preserve_indices=preserve_indices,
+                                               conflict_policy=conflict_policy,
+                                               skip_cb=_skip)
                 self._log("  [%s] 提取 %d 张 -> %s" % (file_fmt, count, sub_dir))
                 total_images += count
             except Exception as e:
                 self._log("  错误: %s" % e)
+                failed += 1
 
         self._log("完成，共 %d 张图片" % total_images)
+        return total_images, failed, skipped
 
-    def _do_pack(self, paths, out_path, fmt, q, rot):
+    def _do_pack(self, paths, out_path, fmt, q, rot,
+                 conflict_policy='overwrite'):
         """打包 ICL/ICO → JXAG ICO"""
         total = len(paths)
         fmt_tag = {'rgb565': 'RGB565无损', 'rgb24': 'RGB24无损',
                    'jpg': 'JPG q=%d' % q, 'jpgpng': 'JPG/PNG原格式 q=%d' % q}[fmt]
         if rot:
-            fmt_tag += ", 旋转%d°" % rot
+            fmt_tag += ", 逆时针旋转%d°" % rot
 
         if total == 1:
             self._log("[1/1] %s (%s)" % (os.path.basename(paths[0]), fmt_tag))
@@ -289,14 +408,20 @@ class Api:
             out_dir = os.path.dirname(out_path)
             out_name = os.path.splitext(os.path.basename(paths[0]))[0] + ".ico"
             ico_path = os.path.join(out_dir, out_name)
-            count = pack_ico(images, ico_path, fmt=fmt, quality=q, rotation=rot)
+            ico_path = _resolve_conflict(ico_path, conflict_policy)
+            if ico_path is None:
+                self._log("  跳过: 输出文件已存在")
+                return 0, 0, 1
+            count = pack_ico(images, ico_path, fmt=fmt, quality=q, rotation=-rot)
             self._progress(100)
             self._log("  打包 %d 张 -> %s" % (count, ico_path))
+            return count, 0, 0
         else:
             out_dir = out_path
-            if out_dir.lower().endswith(".ico"):
-                out_dir = os.path.splitext(out_dir)[0] + "_out"
             os.makedirs(out_dir, exist_ok=True)
+            succeeded = 0
+            failed = 0
+            skipped = 0
 
             for fi, path in enumerate(paths):
                 base = os.path.splitext(os.path.basename(path))[0]
@@ -306,32 +431,58 @@ class Api:
                     images = self._load_images(path)
                 except Exception as e:
                     self._log("  错误: %s" % e)
+                    failed += 1
+                    self._progress((fi + 1) / total * 100)
                     continue
                 if not images:
                     self._log("  没有找到图片")
+                    skipped += 1
+                    self._progress((fi + 1) / total * 100)
                     continue
 
                 self._progress((fi + 1) / total * 100)
                 ico_path = os.path.join(out_dir, base + ".ico")
-                count = pack_ico(images, ico_path, fmt=fmt,
-                                 quality=q, rotation=rot)
-                self._log("  打包 %d 张 -> %s" % (count, ico_path))
+                ico_path = _resolve_conflict(ico_path, conflict_policy)
+                if ico_path is None:
+                    self._log("  跳过: 输出文件已存在 (%s.ico)" % base)
+                    skipped += 1
+                    continue
+                try:
+                    count = pack_ico(images, ico_path, fmt=fmt,
+                                     quality=q, rotation=-rot)
+                    succeeded += 1
+                    self._log("  打包 %d 张 -> %s" % (count, ico_path))
+                except Exception as e:
+                    failed += 1
+                    self._log("  错误: %s" % e)
 
             self._progress(100)
+            self._log("批量结果：成功 %d，失败 %d，跳过 %d" %
+                      (succeeded, failed, skipped))
+            return succeeded, failed, skipped
 
-    def _do_img2ico(self, paths, out_path, fmt, q, rot):
+    def _do_img2ico(self, paths, out_path, fmt, q, rot,
+                    conflict_policy='overwrite'):
         """图片 → JXAG ICO（懒加载）"""
         total = len(paths)
         fmt_tag = {'rgb565': 'RGB565无损', 'rgb24': 'RGB24无损',
                    'jpg': 'JPG q=%d' % q, 'jpgpng': 'JPG/PNG原格式 q=%d' % q}[fmt]
         if rot:
-            fmt_tag += ", 旋转%d°" % rot
+            fmt_tag += ", 逆时针旋转%d°" % rot
 
         self._status("打包 %d 张 (%s)..." % (total, fmt_tag))
-        images = [{'index': i, 'path': p} for i, p in enumerate(paths)]
-        count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=rot)
+        requested_path = out_path
+        out_path = _resolve_conflict(requested_path, conflict_policy)
+        if out_path is None:
+            self._log("跳过: 输出文件已存在 (%s)" % os.path.basename(requested_path))
+            return 0, 0, 1
+        indexes = _source_image_indexes(paths)
+        images = [{'index': index, 'path': path}
+                  for index, path in zip(indexes, paths)]
+        count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=-rot)
         self._progress(100)
         self._log("打包 %d 张 -> %s [%s]" % (count, out_path, fmt_tag))
+        return count, 0, 0
 
     def _load_images(self, path):
         """加载单个 ICL/ICO 为图片列表"""
@@ -346,6 +497,43 @@ class Api:
                 img['jpg'] = img.pop('data')
             return images
         return []
+
+    def get_numbering_info(self, paths, mode):
+        """预检每个输出 ICO 将使用的编号槽位。"""
+        try:
+            checks = []
+            if mode == 'img2ico':
+                indexes = _source_image_indexes(paths or [])
+                groups = [('输入图片', indexes)]
+            else:
+                groups = []
+                for path in paths or []:
+                    images = self._load_images(path)
+                    groups.append((os.path.basename(path),
+                                   [image['index'] for image in images]))
+
+            for name, indexes in groups:
+                counts = {}
+                for index in indexes:
+                    counts[index] = counts.get(index, 0) + 1
+                unique = sorted(counts)
+                maximum = unique[-1] if unique else -1
+                missing = [index for index in range(maximum + 1)
+                           if index not in counts]
+                checks.append({
+                    'file': name,
+                    'indices': unique[:40],
+                    'index_count': len(unique),
+                    'missing': missing[:100],
+                    'missing_count': len(missing),
+                    'duplicates': sorted(index for index, count in counts.items()
+                                         if count > 1),
+                    'invalid': [index for index in unique
+                                if index < 0 or index > 0xFFFF],
+                })
+            return {'ok': True, 'checks': checks}
+        except Exception as e:
+            return {'ok': False, 'message': str(e)}
 
     # ---- 预览 ----
 
@@ -374,10 +562,10 @@ class Api:
             max_w = max(256, min(int(max_w), 4096))
             origin = self._pil_to_data_url(pil, max_w=max_w)
 
-            # 应用变换: 旋转 → 格式效果
+            # 应用变换: 逆时针旋转 → 格式效果
             work = pil.copy()
             if int(rotation) in (90, 180, 270):
-                work = work.rotate(-int(rotation), expand=True)
+                work = work.rotate(int(rotation), expand=True)
             if fmt == 'jpgpng':
                 # 保持原格式: PNG 源无损(不变), 其他按 quality 模拟 JPG
                 fmt = 'jpg' if not self._is_png_source(path, index) else 'none'
@@ -397,6 +585,105 @@ class Api:
             return len(self._load_images(path))
         except Exception:
             return 0
+
+    def get_file_info(self, paths, fmt='rgb565', quality=90, rotation=0):
+        """Serialize native image processing used by concurrent UI refreshes."""
+        with self._file_info_lock:
+            return self._calculate_file_info(paths, fmt, quality, rotation)
+
+    def _calculate_file_info(self, paths, fmt, quality, rotation):
+        """按实际编码流程计算输入信息和 ICO 大小。"""
+        try:
+            import io
+            from PIL import Image
+            total_images = 0
+            source_bytes = 0
+            dimensions = []
+            output_dimensions = []
+            image_sizes = []
+            output_indexes = []
+            paths = paths or []
+            image_indexes = _source_image_indexes(paths)
+            for path_position, path in enumerate(paths):
+                source_bytes += os.path.getsize(path)
+                ext = os.path.splitext(path)[1].lower()
+                if ext in ('.jpg', '.jpeg', '.png', '.bmp'):
+                    with open(path, 'rb') as source_file:
+                        image_sources = [source_file.read()]
+                    source_indexes = [image_indexes[path_position]]
+                else:
+                    loaded_images = self._load_images(path)
+                    image_sources = [image.get('jpg') or image.get('data')
+                                     for image in loaded_images]
+                    source_indexes = [image['index'] for image in loaded_images]
+
+                for raw, source_index in zip(image_sources, source_indexes):
+                    if not raw:
+                        continue
+                    output_indexes.append(source_index)
+                    pil = _load_pil_image(raw)
+                    dimensions.append(pil.size)
+                    if int(rotation) in (90, 180, 270):
+                        pil = pil.rotate(int(rotation), expand=True)
+                    width, height = pil.size
+                    output_dimensions.append((width, height))
+
+                    if fmt == 'rgb565':
+                        _, _, encoded = _image_to_rgb565(pil)
+                        payload = _lzo_compress(encoded)
+                    elif fmt == 'rgb24':
+                        pil = pil.convert('RGBA')
+                        rgba = pil.tobytes()
+                        import numpy as np
+                        arr = np.frombuffer(rgba, dtype=np.uint8).reshape(height, width, 4)
+                        bgra = np.empty_like(arr)
+                        bgra[:, :, 0] = arr[:, :, 2]
+                        bgra[:, :, 1] = arr[:, :, 1]
+                        bgra[:, :, 2] = arr[:, :, 0]
+                        bgra[:, :, 3] = arr[:, :, 3]
+                        payload = _lzo_compress(bgra.tobytes())
+                    elif fmt == 'jpg':
+                        buffer = io.BytesIO()
+                        pil.convert('RGB').save(buffer, 'JPEG', quality=int(quality))
+                        payload = buffer.getvalue()
+                    elif fmt == 'jpgpng':
+                        buffer = io.BytesIO()
+                        if raw[:8] == b'\x89PNG\r\n\x1a\n':
+                            pil.save(buffer, 'PNG')
+                        else:
+                            pil.convert('RGB').save(buffer, 'JPEG', quality=int(quality))
+                        payload = buffer.getvalue()
+                    else:
+                        raise ValueError('unsupported compression format: ' + str(fmt))
+
+                    image_sizes.append(((16 + len(payload) + 15) // 16) * 16)
+                    total_images += 1
+
+            if not total_images:
+                return {"ok": True, "file_count": len(paths or []),
+                        "image_count": 0, "source_bytes": source_bytes,
+                        "dimensions": [], "output_dimensions": [],
+                        "estimated_bytes": 0}
+
+            table_size = max(output_indexes, default=-1) + 1
+            header_bytes = ((16 + table_size * 4 + 15) // 16 * 16)
+
+            unique_dimensions = sorted(set(dimensions))
+            unique_output_dimensions = sorted(set(output_dimensions))
+            return {
+                "ok": True,
+                "file_count": len(paths or []),
+                "image_count": total_images,
+                "source_bytes": source_bytes,
+                "dimensions": unique_dimensions[:8],
+                "more_dimensions": max(0, len(unique_dimensions) - 8),
+                "output_dimensions": unique_output_dimensions[:8],
+                "more_output_dimensions": max(0, len(unique_output_dimensions) - 8),
+                "estimated_bytes": header_bytes + sum(image_sizes),
+                "estimated_exact": True,
+            }
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
 
     def _is_png_source(self, path, index):
         """jpgpng 模式: 判断源是否 PNG (决定预览是否模拟 JPG 有损)"""
