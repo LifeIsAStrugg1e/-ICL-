@@ -618,6 +618,7 @@ function updateOutputControls() {
 }
 
 async function addDroppedPaths(paths, autoDetect) {
+  clearNumberConflictWarning();
   const supported = paths.map(path => ({path, ext: path.split('.').pop().toLowerCase()}))
     .filter(item => ['icl', 'ico', 'jpg', 'jpeg', 'png', 'bmp'].includes(item.ext));
   if (!supported.length) return;
@@ -736,8 +737,14 @@ function showNumberConflictWarning(rejected, rejectBatch, batchIssues) {
   document.getElementById('duplicateNumberModal').classList.remove('hidden');
 }
 
+function clearNumberConflictWarning() {
+  const modal = document.getElementById('duplicateNumberModal');
+  document.getElementById('duplicateNumberMessage').textContent = '';
+  modal.classList.add('hidden');
+}
+
 function closeDuplicateNumberWarning() {
-  document.getElementById('duplicateNumberModal').classList.add('hidden');
+  clearNumberConflictWarning();
 }
 
 window.handleDroppedPaths = function(paths) {

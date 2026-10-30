@@ -412,7 +412,8 @@ class Api:
             if ico_path is None:
                 self._log("  跳过: 输出文件已存在")
                 return 0, 0, 1
-            count = pack_ico(images, ico_path, fmt=fmt, quality=q, rotation=-rot)
+            count = pack_ico(images, ico_path, fmt=fmt, quality=q,
+                             rotation=(360 - rot) % 360)
             self._progress(100)
             self._log("  打包 %d 张 -> %s" % (count, ico_path))
             return count, 0, 0
@@ -449,7 +450,7 @@ class Api:
                     continue
                 try:
                     count = pack_ico(images, ico_path, fmt=fmt,
-                                     quality=q, rotation=-rot)
+                                     quality=q, rotation=(360 - rot) % 360)
                     succeeded += 1
                     self._log("  打包 %d 张 -> %s" % (count, ico_path))
                 except Exception as e:
@@ -479,7 +480,8 @@ class Api:
         indexes = _source_image_indexes(paths)
         images = [{'index': index, 'path': path}
                   for index, path in zip(indexes, paths)]
-        count = pack_ico(images, out_path, fmt=fmt, quality=q, rotation=-rot)
+        count = pack_ico(images, out_path, fmt=fmt, quality=q,
+                         rotation=(360 - rot) % 360)
         self._progress(100)
         self._log("打包 %d 张 -> %s [%s]" % (count, out_path, fmt_tag))
         return count, 0, 0
